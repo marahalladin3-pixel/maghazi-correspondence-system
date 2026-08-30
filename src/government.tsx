@@ -138,7 +138,7 @@ export function GovernmentCompose() {
   const [form, setForm] = useState({
     subject: selectedTemplate?.subject || "",
     delegatedBy: "نفسه",
-    jobTitle: "موظف البلدية",
+    jobTitle: "مأمور المراسلات",
     from: mailType === "incoming" ? "" : "بلدية المغازي",
     to: mailType === "incoming" ? "بلدية المغازي" : "",
     department: "",
