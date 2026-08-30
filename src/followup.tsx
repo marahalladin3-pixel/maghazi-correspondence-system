@@ -1,7 +1,7 @@
 import {useMemo,useState} from 'react';
 import {Archive,ArrowLeftRight,CheckCircle2,Clock3,Eye,FileSearch,FolderArchive,Search,TimerReset} from 'lucide-react';
 import {useNavigate} from 'react-router-dom';
-import {Deadline,deadlineState,PageHead,Status} from './components';
+import {Deadline,deadlineState,Empty,PageHead,Status} from './components';
 import {departmentNames} from './data';
 import {label,useStore} from './store';
 
@@ -9,25 +9,26 @@ export function ReferralFollowup(){
   const mail=useStore(s=>s.mail),navigate=useNavigate();
   const [query,setQuery]=useState(''),[department,setDepartment]=useState(''),[state,setState]=useState('open');
   const referrals=useMemo(()=>mail.filter(m=>m.workflow.length>0||['تم التحويل','قيد المعالجة','بانتظار الرد','متأخر'].includes(m.status)),[mail]);
-  const matchState=(m:typeof mail[number])=>state==='all'||(state==='late'&&deadlineState(m.dueDate,m.status)==='overdue')||(state==='open'&&!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status))||(state==='done'&&['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status));
+  const matchState=(m:typeof mail[number])=>state==='all'||(state==='late'&&deadlineState(m.dueDate,m.status)==='overdue')||(state==='waiting'&&m.status==='بانتظار الرد')||(state==='open'&&!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status))||(state==='done'&&['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status));
   const rows=referrals.filter(m=>matchState(m)&&(!department||m.department===department)&&(!query||[m.number,m.subject,m.employee,m.department].some(v=>v.includes(query))));
   const stats=[
-    ['إحالات مفتوحة',referrals.filter(m=>!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,ArrowLeftRight],
-    ['متجاوزة للمهلة',referrals.filter(m=>deadlineState(m.dueDate,m.status)==='overdue').length,Clock3],
-    ['بانتظار الرد',referrals.filter(m=>m.status==='بانتظار الرد').length,TimerReset],
-    ['مكتملة',referrals.filter(m=>['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,CheckCircle2]
+    ['إحالات مفتوحة',referrals.filter(m=>!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,ArrowLeftRight,'open'],
+    ['متجاوزة للمهلة',referrals.filter(m=>deadlineState(m.dueDate,m.status)==='overdue').length,Clock3,'late'],
+    ['بانتظار الرد',referrals.filter(m=>m.status==='بانتظار الرد').length,TimerReset,'waiting'],
+    ['مكتملة',referrals.filter(m=>['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,CheckCircle2,'done']
   ] as const;
   return <>
     <PageHead title="الإحالات والمتابعة" subtitle="متابعة المحال إليه والمطلوب وتاريخ الاستحقاق والمسؤول الحالي"/>
-    <div className="followup-stats">{stats.map(([title,count,Icon])=><article key={title}><i><Icon/></i><div><b>{count}</b><span>{title}</span></div></article>)}</div>
+    <div className="followup-stats">{stats.map(([title,count,Icon,key])=><button className={state===key?'active':''} key={title} onClick={()=>setState(key)}><i><Icon/></i><div><b>{count}</b><span>{title}</span></div></button>)}</div>
     <section className="panel followup-filters">
       <div><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالرقم أو الموضوع أو المسؤول..."/></div>
       <select value={department} onChange={e=>setDepartment(e.target.value)}><option value="">جميع الوحدات</option>{departmentNames.map(x=><option key={x}>{x}</option>)}</select>
-      <select value={state} onChange={e=>setState(e.target.value)}><option value="all">جميع الحالات</option><option value="open">مفتوحة</option><option value="late">متأخرة</option><option value="done">مكتملة</option></select>
+      <select value={state} onChange={e=>setState(e.target.value)}><option value="all">جميع الحالات</option><option value="open">مفتوحة</option><option value="late">متأخرة</option><option value="waiting">بانتظار الرد</option><option value="done">مكتملة</option></select>
+      <button className="secondary" onClick={()=>{setQuery('');setDepartment('');setState('all')}}>مسح الفلاتر</button>
     </section>
     <section className="panel followup-table">
       <div className="followup-head"><b>المراسلة</b><b>المحال إليه / المسؤول</b><b>المطلوب</b><b>تاريخ الإحالة</b><b>المهلة</b><b>الحالة</b><b/></div>
-      {rows.map(m=>{const last=m.workflow.at(-1);return <div className={`followup-row ${deadlineState(m.dueDate,m.status)}`} key={m.id}><div><b>{m.subject}</b><small>{m.number} · {label(m.type)}</small></div><div><b>{m.employee||m.department}</b><small>{m.department}</small></div><span>{last?.action||'متابعة المراسلة'}</span><span>{last?new Date(last.time).toLocaleDateString('ar-PS'):m.date}</span><Deadline date={m.dueDate} status={m.status}/><Status>{m.status}</Status><button className="icon" onClick={()=>navigate(`/app/mail/${m.id}`)}><Eye/></button></div>})}
+      {rows.length?rows.map(m=>{const last=m.workflow.at(-1);return <div className={`followup-row ${deadlineState(m.dueDate,m.status)}`} key={m.id}><div><b>{m.subject}</b><small>{m.number} · {label(m.type)}</small></div><div><b>{m.employee||m.department}</b><small>{m.department}</small></div><span>{last?.action||'متابعة المراسلة'}</span><span>{last?new Date(last.time).toLocaleDateString('ar-PS'):m.date}</span><Deadline date={m.dueDate} status={m.status}/><Status>{m.status}</Status><button className="icon" title="عرض المراسلة" onClick={()=>navigate(`/app/mail/${m.id}`)}><Eye/></button></div>}):<Empty text="لا توجد إحالات مطابقة للفلاتر المحددة"/>}
     </section>
   </>;
 }
