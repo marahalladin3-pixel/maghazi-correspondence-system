@@ -1,0 +1,1 @@
+.report-status-bars{display:grid;gap:11px;padding:12px}.report-status-bars>div{display:grid;grid-template-columns:1fr auto;gap:5px;font-size:11px}.report-status-bars i{grid-column:1/-1;height:7px;background:#eef0f2;border-radius:7px;overflow:hidden}.report-status-bars em{display:block;height:100%;background:linear-gradient(90deg,var(--primary),var(--gold));border-radius:7px}

@@ -1,0 +1,18 @@
+.deadline{display:inline-flex;align-items:center;gap:5px;width:max-content;margin-top:6px;padding:5px 9px;border-radius:9px;font-size:12px;font-weight:800;white-space:nowrap}
+.deadline svg{width:14px;height:14px}
+.deadline.overdue{background:#fde5e7;color:#b21d25}
+.deadline.today{background:#fff0d2;color:#996000}
+.deadline.ontime,.deadline.done{background:#e2f5ec;color:#137653}
+.deadline.none{background:#eef1f4;color:#6f7a88}
+.deadline-row.overdue{background:#fff8f8}
+.deadline-row.overdue td:first-child{border-right:4px solid #c62830}
+.deadline-row.ontime td:first-child{border-right:4px solid #16845f}
+.deadline-row.today td:first-child{border-right:4px solid #d99211}
+.deadline-message.overdue{background:#fff6f6!important;border-right:4px solid #c62830!important}
+.deadline-message.ontime{border-right:4px solid #16845f}
+.deadline-message.today{border-right:4px solid #d99211}
+:root[data-theme="dark"] .deadline.overdue{background:#49262b;color:#ff9ca2}
+:root[data-theme="dark"] .deadline.today{background:#49391f;color:#ffd174}
+:root[data-theme="dark"] .deadline.ontime,:root[data-theme="dark"] .deadline.done{background:#193e34;color:#77dbb5}
+:root[data-theme="dark"] .deadline.none{background:#27313e;color:#b7c1ce}
+:root[data-theme="dark"] .deadline-row.overdue,:root[data-theme="dark"] .deadline-message.overdue{background:#281e24!important}

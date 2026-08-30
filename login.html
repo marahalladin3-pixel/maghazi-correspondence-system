@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>تسجيل الدخول | نظام المراسلات والأرشيف</title>
+        <link rel="stylesheet" href="css/style.css">
+        <link rel="stylesheet" href="css/enterprise.css">
+    </head>
+    <body data-page="login">
+        <div class="login-page">
+            <section class="login-visual">
+                <div class="brand-mark">م</div>
+                <h1>نظام المراسلات<br>والأرشيف الإلكتروني</h1>
+                <p>منصة بلدية المغازي الموحدة لإدارة الكتب الرسمية ومتابعتها وحفظها المؤسسي.</p>
+            </section>
+            <section class="login-box">
+                <form class="login-card" id="loginForm">
+                    <img class="login-municipality-logo" src="assets/images/maghazi-logo.jpeg" alt="شعار بلدية المغازي">
+                    <h2>الدخول إلى النظام</h2>
+                    <p class="muted">مخصص لموظفي بلدية المغازي المصرح لهم</p>
+                    <div class="field">
+                        <label for="loginEmail">البريد الوظيفي</label>
+                        <input id="loginEmail" type="email" autocomplete="username" required>
+                    </div>
+                    <div class="field">
+                        <label for="loginPassword">كلمة المرور</label>
+                        <input id="loginPassword" type="password" autocomplete="current-password" required>
+                    </div>
+                    <label class="remember">
+                        <input type="checkbox"> تذكر هذا الجهاز
+                    </label>
+                    <button class="btn btn-primary">تسجيل الدخول</button>
+                </form>
+            </section>
+        </div>
+        <script src="js/municipality-api.js"></script>
+        <script src="js/forms.js"></script>
+    </body>
+</html>

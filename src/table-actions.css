@@ -1,0 +1,7 @@
+.table-actions{display:flex;align-items:center;gap:7px}
+.table-actions button{width:39px;height:39px;border-radius:10px;display:grid;place-items:center}
+.view-action{border:1px solid #f0d6d8;background:#fff2f2;color:var(--red)}
+.view-action:hover{background:var(--red);color:#fff}
+.table-actions .star{border:1px solid var(--line);background:#fff}
+.table-actions .star.on{background:#fff8e7;border-color:#edd8a4}
+.outgoing-table td>small,.outgoing-table td>b{display:block}.outgoing-table td>small{color:var(--muted);margin-top:4px}.view-state{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border-radius:9px;font-weight:700}.view-state svg{width:16px}.view-state small{display:block;font-weight:400}.view-state.opened{background:#e7f6f0;color:#13785a}.view-state.waiting{background:#f2f3f5;color:#687586}

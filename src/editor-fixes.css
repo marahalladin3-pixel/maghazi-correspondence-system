@@ -1,0 +1,9 @@
+.dashboard-date{margin:-18px 0 26px!important;display:inline-flex;align-items:center;min-height:38px;padding:7px 13px;border:1px solid var(--line);border-radius:10px;background:var(--card,#fff);color:var(--muted);font-weight:700;position:relative;z-index:1}
+.editor-title{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.editor-title h2{margin:0}.editor-title p{margin:6px 0 0;color:var(--muted);font-size:13px}
+.editor-title>span{padding:7px 10px;border-radius:9px;background:#e3f5ec;color:#137653;font-size:12px;font-weight:700}
+.editor-toolbar button{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 11px;color:var(--ink);cursor:pointer;font-family:inherit}
+.editor-toolbar button:hover{border-color:var(--red);color:var(--red);background:#fff7f7}.editor-toolbar button:active{transform:translateY(1px)}
+.editor-card textarea{font-family:inherit;font-size:16px;line-height:1.9;min-height:300px;outline:none}.editor-card textarea:focus{border-color:#c97d82;box-shadow:inset 0 0 0 1px #c97d82}
+:root[data-theme="dark"] .editor-title>span{background:#193e34;color:#77dbb5}:root[data-theme="dark"] .editor-toolbar button:hover{background:#352329}
+@media(max-width:720px){.editor-title{align-items:flex-start;flex-direction:column}.dashboard-date{margin:0 0 20px!important}}

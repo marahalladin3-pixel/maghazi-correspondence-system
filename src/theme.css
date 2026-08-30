@@ -1,0 +1,31 @@
+:root[data-theme="dark"]{--ink:#f3f5f8;--muted:#aab3c1;--line:#343c49;--soft:#252c36;--white:#1c222b;--shadow:0 12px 35px rgba(0,0,0,.24);background:#11161d;color:#eef1f5}
+:root[data-theme="dark"] body{background:#11161d;color:#eef1f5}
+:root[data-theme="dark"] .shell main,:root[data-theme="dark"] .content{background:#11161d}
+:root[data-theme="dark"] .sidebar,:root[data-theme="dark"] .top,:root[data-theme="dark"] .panel,:root[data-theme="dark"] .form-card,:root[data-theme="dark"] .stat,:root[data-theme="dark"] .inbox-workspace,:root[data-theme="dark"] .profile-tabs,:root[data-theme="dark"] .notification-pop,:root[data-theme="dark"] .profile-menu,:root[data-theme="dark"] .modal,:root[data-theme="dark"] .approval-kpis>button,:root[data-theme="dark"] .approval-filters{background:#1c222b;color:#eef1f5}
+:root[data-theme="dark"] .sidebar nav a,:root[data-theme="dark"] .profile,:root[data-theme="dark"] .profile-menu button,:root[data-theme="dark"] .subject,:root[data-theme="dark"] .priority-row,:root[data-theme="dark"] .inbox-tabs button,:root[data-theme="dark"] .mail-rail>button,:root[data-theme="dark"] .archive-row{background:#1c222b;color:#dce2ea}
+:root[data-theme="dark"] .sidebar nav a:hover,:root[data-theme="dark"] .profile-menu button:hover,:root[data-theme="dark"] .sidebar nav a.active,:root[data-theme="dark"] .inbox-tabs button.active,:root[data-theme="dark"] .mail-rail>button.active{background:#342126;color:#ffb2b7}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea,:root[data-theme="dark"] .global-search,:root[data-theme="dark"] .search,:root[data-theme="dark"] .field input,:root[data-theme="dark"] .field select,:root[data-theme="dark"] .field textarea{background:#242b35!important;color:#eef1f5!important;border-color:#3b4553!important}
+:root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#8994a4}
+:root[data-theme="dark"] th{background:#252c36;color:#b8c0cc}
+:root[data-theme="dark"] td,:root[data-theme="dark"] .message-list article,:root[data-theme="dark"] .approval-requests>article{border-color:#343c49}
+:root[data-theme="dark"] .new-row,:root[data-theme="dark"] .message-list article.unread{background:#2a1e22}
+:root[data-theme="dark"] .body-text,:root[data-theme="dark"] .official-body,:root[data-theme="dark"] .document-meta span,:root[data-theme="dark"] .scan-options,:root[data-theme="dark"] .note,:root[data-theme="dark"] .decision-summary,:root[data-theme="dark"] .permission-box{background:#252c36;color:#dce2ea}
+:root[data-theme="dark"] .secondary,:root[data-theme="dark"] .icon,:root[data-theme="dark"] .message-actions button,:root[data-theme="dark"] .table-actions button,:root[data-theme="dark"] .editor-toolbar button{background:#252c36;color:#e8ebef;border-color:#3b4553}
+:root[data-theme="dark"] .editor-toolbar{background:#171c23;border-color:#3b4553}
+:root[data-theme="dark"] .bar-chart{background:repeating-linear-gradient(to top,transparent 0,transparent 64px,#303844 65px)}
+:root[data-theme="dark"] .profile-photo{background:#34252a}
+:root[data-theme="dark"] .switch i{background:#4b5563}
+:root[data-theme="dark"] .switch input:checked+i{background:#20a77b;box-shadow:0 0 0 3px rgba(32,167,123,.16)}
+:root[data-theme="dark"] .switch input:checked+i:before{background:#fff;box-shadow:0 2px 7px rgba(0,0,0,.35)}
+:root[data-theme="dark"] .switch input:not(:checked)+i{background:#4b5563;box-shadow:inset 0 0 0 1px #657184}
+:root[data-theme="dark"] a{color:#f08b91}
+:root[data-theme="dark"] .notification-pop{background:#1c222b;border-color:#3a4451;box-shadow:0 24px 65px rgba(0,0,0,.48)}
+:root[data-theme="dark"] .notification-pop h3{color:#f4f6f9;border-bottom:1px solid #343d49;padding-bottom:13px}
+:root[data-theme="dark"] .notification-pop h3 span{background:#8d171d;color:#fff}
+:root[data-theme="dark"] .notification-pop>button{background:#242b35;color:#eef1f5;border:1px solid #343d49;margin-top:7px}
+:root[data-theme="dark"] .notification-pop>button.unread{background:#3a2227;border-color:#703038;box-shadow:inset -4px 0 #c73b44}
+:root[data-theme="dark"] .notification-pop>button:hover{background:#303946;border-color:#4a5666}
+:root[data-theme="dark"] .notification-pop>button.unread:hover{background:#47272d}
+:root[data-theme="dark"] .notification-pop>button b{color:#fff;font-size:15px}
+:root[data-theme="dark"] .notification-pop>button span{color:#c8d0dc}
+:root[data-theme="dark"] .notification-pop>button small{color:#929dad;margin-top:4px}

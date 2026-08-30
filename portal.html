@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>بوابة بلدية المغازي</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/redesign.css">
+  <link rel="stylesheet" href="css/portal-components.css">
+</head>
+<body class="portal-page">
+  <header class="portal-header">
+    <a class="portal-brand" href="portal.html"><span class="municipal-seal">م</span><span><b>بلدية المغازي</b><small>البوابة الإدارية الموحدة</small></span></a>
+    <nav class="portal-nav" aria-label="التنقل الرئيسي"><a class="active" href="#">الرئيسية</a><a href="#services">الأنظمة والخدمات</a><a href="#updates">التعاميم</a></nav>
+    <div class="portal-user"><div class="portal-notifications"><button class="header-round" id="portalBell" aria-label="الإشعارات" aria-expanded="false">♢<i id="portalNotificationCount">3</i></button><div class="portal-dropdown" id="portalNotificationMenu"><div class="portal-dropdown-head"><b>الإشعارات</b><button id="markPortalRead">تحديد الكل كمقروء</button></div><div id="portalNotificationList"></div></div></div><span class="avatar" id="portalAvatar">م</span><span><b id="portalUserName">—</b><small id="portalUserRole">—</small></span></div>
+  </header>
+  <main>
+    <section class="portal-hero"><div class="hero-copy"><span class="eyebrow">لوحة العمل اليومية</span><h1>مرحبًا، <span id="heroUserName">—</span></h1><p>لديك <b>4 مراسلات جديدة</b> وكتابان يحتاجان إلى متابعة اليوم.</p><div class="hero-actions"><a href="inbox.html" class="btn btn-gold">عرض صندوق المراسلات</a><a href="incoming-add.html" class="btn hero-ghost">تسجيل وارد جديد</a></div></div><div class="hero-date"><span id="currentDay">—</span><strong id="currentDate">—</strong><small id="currentMonth">—</small></div></section>
+    <section class="portal-container" id="services">
+      <div class="section-heading"><div><span class="eyebrow dark">مساحة العمل</span><h2>الأنظمة والخدمات</h2><p>الخدمات المتاحة وفق صلاحيات حسابك</p></div><label class="portal-search">⌕ <input id="systemSearch" placeholder="ابحث عن نظام أو خدمة..."></label></div>
+      <div class="systems-grid" id="systemsGrid">
+        <a class="system-card featured" href="dashboard.html"><span class="system-icon">✉</span><span class="system-copy"><small>النظام الأكثر استخدامًا</small><b>المراسلات والأرشيف الإلكتروني</b><p>تسجيل الكتب، تتبع التحويلات، وإدارة الأرشيف المؤسسي.</p><em>الدخول إلى النظام ←</em></span><span class="system-count">4<small>جديد</small></span></a>
+        <a class="system-card" href="#"><span class="system-icon blue">♟</span><span class="system-copy"><b>الموارد البشرية</b><p>الموظفون والدوام والإجازات والملفات الوظيفية.</p><em>فتح النظام ←</em></span></a>
+        <a class="system-card" href="#"><span class="system-icon green">◫</span><span class="system-copy"><b>النظام المالي</b><p>الموازنة والمصروفات والتحصيل والتقارير المالية.</p><em>فتح النظام ←</em></span></a>
+        <a class="system-card" href="#"><span class="system-icon amber">⌂</span><span class="system-copy"><b>خدمات الجمهور</b><p>الطلبات والشكاوى والتراخيص ومتابعة المعاملات.</p><em>فتح النظام ←</em></span></a>
+        <a class="system-card" href="#"><span class="system-icon violet">▦</span><span class="system-copy"><b>المشاريع والعطاءات</b><p>تخطيط المشاريع ومتابعة التنفيذ والعقود.</p><em>فتح النظام ←</em></span></a>
+      </div>
+      <div class="portal-bottom" id="updates"><section class="portal-panel"><div class="panel-head"><h3>آخر التعاميم</h3><a href="#">عرض الكل</a></div><article><span class="news-date"><b>17</b>آب</span><div><b>تحديث إجراءات المراسلات الرسمية</b><p>يرجى من جميع الدوائر الالتزام بنظام الترقيم الإلكتروني الجديد.</p></div></article><article><span class="news-date"><b>14</b>آب</span><div><b>موعد اجتماع رؤساء الأقسام</b><p>الاجتماع الدوري يوم الثلاثاء في قاعة البلدية.</p></div></article></section><aside class="portal-panel quick"><h3>وصول سريع</h3><a href="inbox.html"><span>▣</span>صندوق مراسلاتي <b>4</b></a><a href="incoming-add.html"><span>＋</span>تسجيل كتاب وارد</a><a href="reports.html"><span>▥</span>التقارير الدورية</a></aside></div>
+    </section>
+  </main>
+  <footer class="portal-footer"><span>© 2026 بلدية المغازي — البوابة الإدارية الموحدة</span><span>الدعم الفني · الخصوصية · الإصدار 2.4</span></footer>
+  <script src="js/data.js"></script><script src="js/portal.js"></script>
+</body>
+</html>
