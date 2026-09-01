@@ -53,7 +53,7 @@ export function ArchiveCenter(){
     </section>
     <section className="panel archive-results">
       <div className="panel-head"><div><h2>نتائج الأرشيف</h2><p>{rows.length} سجلات مطابقة</p></div><FileSearch/></div>
-      {rows.length?rows.map(m=><button key={m.id} onClick={()=>navigate(`/app/mail/${m.id}`)}><FolderArchive/><div><b>{m.subject}</b><span>{m.number} · {m.date} · {m.department}</span><small>{m.archiveCategory||'عام'} · {m.confidentiality||'داخلي'}{m.keywords&&` · ${m.keywords}`}</small></div><Status>{m.status}</Status><Eye/></button>):<div className="archive-empty"><FileSearch/><h3>لا توجد نتائج مطابقة</h3><p>ستظهر المراسلات هنا بعد إغلاقها وأرشفتها.</p></div>}
+      {rows.length?rows.map(m=><button key={m.id} onClick={()=>navigate(`/app/mail/${m.id}`)}><FolderArchive/><div><b>{m.subject}</b><span>{m.number} · {m.date} · {m.department}</span><small>رمز الأرشيف: {m.archiveCode||'غير محدد'} · {m.archiveCategory||'عام'} · {m.confidentiality||'داخلي'}{m.archivedBy&&` · أرشفها ${m.archivedBy}`}{m.keywords&&` · ${m.keywords}`}</small></div><Status>{m.status}</Status><Eye/></button>):<div className="archive-empty"><FileSearch/><h3>لا توجد نتائج مطابقة</h3><p>ستظهر المراسلات هنا بعد إغلاقها وأرشفتها.</p></div>}
     </section>
   </>;
 }

@@ -115,6 +115,251 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Compact correspondence details workspace. */
+.content:has(.compact-mail-details) {
+  padding-top: 22px;
+}
+.compact-mail-details > .page-head {
+  margin-bottom: 12px;
+  align-items: center;
+}
+.compact-mail-details > .page-head h1 {
+  font-size: clamp(25px, 2.2vw, 31px);
+  margin: 4px 0 2px;
+}
+.compact-mail-details > .page-head p {
+  font-size: 14px;
+}
+.compact-mail-details .panel {
+  border-radius: 14px;
+  box-shadow: 0 7px 24px #1722350d;
+}
+.compact-mail-details .lifecycle-strip {
+  grid-template-columns: repeat(4, minmax(110px, 1fr)) auto;
+  gap: 9px;
+  padding: 14px 17px;
+  margin-bottom: 12px;
+}
+.compact-mail-details .lifecycle-strip > div:not(.lifecycle-actions) {
+  padding-left: 9px;
+}
+.compact-mail-details .lifecycle-strip small {
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+.compact-mail-details .lifecycle-strip b {
+  font-size: 14px;
+}
+.compact-mail-details .lifecycle-actions button {
+  padding: 7px 9px;
+  font-size: 13px;
+}
+.compact-mail-details .correspondence-thread {
+  padding: 14px 17px;
+  margin-bottom: 12px;
+}
+.compact-mail-details .correspondence-thread .panel-head {
+  margin: 0;
+}
+.compact-mail-details .correspondence-thread h2 {
+  font-size: 18px;
+}
+.compact-mail-details .correspondence-thread p {
+  font-size: 13px;
+}
+.compact-mail-details .tri-workspace {
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-areas: "document movement";
+  gap: 13px;
+}
+.compact-mail-details .mail-rail {
+  display: none;
+}
+.compact-mail-details .mail-rail > button {
+  padding: 10px;
+}
+.compact-mail-details .mail-document {
+  padding: 20px;
+  margin-bottom: 0;
+}
+.compact-mail-details .document-head {
+  padding-bottom: 13px;
+  gap: 14px;
+}
+.compact-mail-details .document-head h2 {
+  font-size: 23px;
+  margin: 5px 0;
+}
+.compact-mail-details .document-head p {
+  margin: 0;
+}
+.compact-mail-details .original-seal {
+  margin: 12px 0;
+  padding: 12px 14px;
+}
+.compact-mail-details .document-meta {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin: 12px 0;
+}
+.compact-mail-details .document-meta span {
+  padding: 9px 10px;
+  font-size: 12px;
+}
+.compact-mail-details .document-meta b {
+  margin-top: 2px;
+  font-size: 13px;
+}
+.compact-mail-details .official-body {
+  min-height: 105px;
+  padding: 16px;
+  line-height: 1.75;
+}
+.compact-mail-details .attachment-block {
+  margin-top: 13px;
+}
+.compact-mail-details .workflow-actions {
+  margin-top: 13px;
+}
+.compact-mail-details .workflow-actions button {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.compact-mail-details .calendar-check {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.compact-mail-details .movement-log {
+  display: block;
+  position: sticky;
+  top: 105px;
+  max-height: calc(100vh - 125px);
+  overflow-y: auto;
+  padding: 17px;
+  margin-bottom: 0;
+}
+.compact-mail-details .movement-log .panel-head {
+  margin-bottom: 8px;
+}
+.compact-mail-details .movement-log > article {
+  padding: 9px 0;
+  font-size: 13px;
+}
+.compact-mail-details .movement-log > article p {
+  margin: 3px 0;
+}
+.compact-mail-details .movement-log > .empty {
+  min-height: 100px;
+  padding: 14px;
+}
+.compact-mail-details .notes-area {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.compact-mail-details .notes-area h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.compact-mail-details .notes-area > p {
+  margin: 6px 0;
+  padding: 8px;
+  font-size: 13px;
+}
+.compact-mail-details .notes-area textarea {
+  min-height: 72px;
+  padding: 10px;
+}
+.compact-mail-details .notes-area .primary {
+  min-height: 40px;
+  margin-top: 7px;
+}
+@media (max-width: 900px) {
+  .compact-mail-details .lifecycle-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .compact-mail-details .lifecycle-actions {
+    grid-column: 1 / -1;
+  }
+  .compact-mail-details .tri-workspace {
+    grid-template-columns: 1fr;
+    grid-template-areas: "document" "movement";
+  }
+  .compact-mail-details .movement-log {
+    position: static;
+    max-height: none;
+  }
+}
+@media (max-width: 650px) {
+  .content:has(.compact-mail-details) {
+    padding: 14px 10px 35px;
+  }
+  .compact-mail-details > .page-head {
+    display: block;
+    margin-bottom: 8px;
+  }
+  .compact-mail-details > .page-head h1 {
+    font-size: 23px;
+  }
+  .compact-mail-details > .page-head p {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  .compact-mail-details .lifecycle-strip {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px;
+  }
+  .compact-mail-details .lifecycle-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .compact-mail-details .lifecycle-actions button:last-child {
+    grid-column: 1 / -1;
+  }
+  .compact-mail-details .correspondence-thread {
+    padding: 12px;
+  }
+  .compact-mail-details .correspondence-thread .panel-head {
+    align-items: center;
+  }
+  .compact-mail-details .correspondence-thread p {
+    display: none;
+  }
+  .compact-mail-details .mail-rail {
+    display: none;
+  }
+  .compact-mail-details .tri-workspace {
+    grid-template-areas: "document" "movement";
+  }
+  .compact-mail-details .mail-document,
+  .compact-mail-details .movement-log {
+    padding: 14px;
+  }
+  .compact-mail-details .document-head {
+    display: block;
+  }
+  .compact-mail-details .document-head h2 {
+    font-size: 20px;
+  }
+  .compact-mail-details .document-head > div:last-child {
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .compact-mail-details .document-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+  .compact-mail-details .original-seal {
+    grid-template-columns: auto 1fr;
+  }
+  .compact-mail-details .original-seal button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .compact-mail-details .workflow-actions button {
+    flex: 1 1 calc(50% - 7px);
+    justify-content: center;
+  }
+}
 .selected-attachments {
   margin-top: 14px;
 }

@@ -4,6 +4,7 @@ import {
   Archive,
   ArrowLeftRight,
   Ban,
+  Camera,
   CalendarClock,
   Check,
   ChevronDown,
@@ -135,6 +136,15 @@ export function GovernmentCompose() {
     [linked, setLinked] = useState<string[]>([]),
     [linkNumber, setLinkNumber] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const appendAttachments = (files: FileList | null) => {
+    const next = Array.from(files || []).map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name || `صورة-${new Date().toLocaleTimeString('ar-PS')}.jpg`,
+      size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.ceil(file.size / 1024))} KB`,
+      url: URL.createObjectURL(file),
+    }));
+    if (next.length) setAttachments((current) => [...current, ...next]);
+  };
   const [form, setForm] = useState({
     subject: selectedTemplate?.subject || "",
     delegatedBy: "نفسه",
@@ -266,7 +276,7 @@ export function GovernmentCompose() {
     navigate(`/app/mail/${record.id}`);
   };
   return (
-    <>
+    <div className="compact-compose-page">
       <PageHead
         title={
           mailType === "internal"
@@ -586,36 +596,19 @@ export function GovernmentCompose() {
             <textarea
               ref={editorRef}
               style={{ textAlign: bodyAlign }}
-              rows={13}
+              rows={7}
               value={form.body}
               onChange={(e) => setForm({ ...form, body: e.target.value })}
               placeholder="اكتب نص المراسلة الرسمي هنا..."
             />
           </section>
-          <section className="panel upload-card">
-            <Upload />
-            <div>
-              <h3>تحميل المرفقات</h3>
-              <p>PDF، Word أو صور — يمكن رفع عدة ملفات</p>
+          <section className="panel attachment-capture-card">
+            <div className="panel-head"><div><h3>مرفقات المراسلة</h3><p>أضف ملفات من الجهاز أو صوّر الوثيقة مباشرة من الجوال</p></div><Paperclip/></div>
+            <div className="attachment-source-actions">
+              <label><Upload/><span><b>اختيار ملفات</b><small>PDF، Word أو عدة صور</small></span><input type="file" multiple accept=".pdf,.doc,.docx,image/*" onChange={(e)=>{appendAttachments(e.target.files);e.target.value=''}}/></label>
+              <label className="camera-source"><Camera/><span><b>تصوير من الجوال</b><small>يفتح الكاميرا الخلفية مباشرة</small></span><input type="file" accept="image/*" capture="environment" multiple onChange={(e)=>{appendAttachments(e.target.files);e.target.value=''}}/></label>
             </div>
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.doc,.docx,image/*"
-              onChange={(e) =>
-                setAttachments(
-                  Array.from(e.target.files || []).map((f) => ({
-                    id: crypto.randomUUID(),
-                    name: f.name,
-                    size:
-                      f.size > 1048576
-                        ? `${(f.size / 1048576).toFixed(1)} MB`
-                        : `${Math.ceil(f.size / 1024)} KB`,
-                    url: URL.createObjectURL(f),
-                  })),
-                )
-              }
-            />
+            <p className="mobile-attachment-note">على الهاتف: افتح المعاملة من المتصفح واضغط «تصوير من الجوال»، ثم التقط الصفحة ووافق على استخدامها.</p>
           </section>
           {attachments.length > 0 && (
             <section className="panel selected-attachments">
@@ -693,6 +686,14 @@ export function GovernmentCompose() {
                 ))}
               </select>
             </Field>
+            <Field label="ملاحظة للمستلم">
+              <textarea
+                rows={3}
+                value={recipientNote}
+                onChange={(e) => setRecipientNote(e.target.value)}
+                placeholder="ملاحظة مختصرة للمستلم (اختياري)"
+              />
+            </Field>
             <Field label="التأشير المطلوب">
               <select
                 value={recipientAction}
@@ -728,12 +729,6 @@ export function GovernmentCompose() {
               />{" "}
               الرد مطلوب
             </label>
-            <Field label="ملاحظة للمستلم">
-              <textarea
-                value={recipientNote}
-                onChange={(e) => setRecipientNote(e.target.value)}
-              />
-            </Field>
             <button className="primary full" onClick={addRecipient}>
               <UserPlus /> إضافة المستلم
             </button>
@@ -838,7 +833,7 @@ export function GovernmentCompose() {
           </div>
         </aside>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -874,6 +869,7 @@ export function GovernmentDetails() {
     [replyError, setReplyError] = useState(""),
     [closeReasonText, setCloseReasonText] = useState(""),
     [archiveCategory, setArchiveCategory] = useState("عام"),
+    [archiveCode, setArchiveCode] = useState(""),
     [archiveKeywords, setArchiveKeywords] = useState(""),
     [actionError, setActionError] = useState(""),
     [actionReason, setActionReason] = useState(""),
@@ -970,6 +966,15 @@ export function GovernmentDetails() {
     );
   const doStatus = (status: string, actionName: string) =>
     update(selected.id, { status }, actionName);
+  const appendToSelected = (files: FileList | null, source: 'camera'|'files') => {
+    const added = Array.from(files || []).map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name || `صورة-${new Date().toLocaleTimeString('ar-PS')}.jpg`,
+      size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.ceil(file.size / 1024))} KB`,
+      url: URL.createObjectURL(file),
+    }));
+    if (added.length) update(selected.id, { attachments: [...selected.attachments, ...added] }, source === 'camera' ? 'إرفاق صور من كاميرا الجوال' : 'إضافة مرفقات');
+  };
   const replyDraftKey = `municipality-reply-draft-${selected.id}`;
   const openReply = () => {
     try {
@@ -1083,7 +1088,7 @@ export function GovernmentDetails() {
     setShowCorrection(false);
   };
   return (
-    <>
+    <div className="compact-mail-details">
       <PageHead
         title={`تفاصيل المراسلة ${selected.number}`}
         subtitle="عرض الكتاب وسجل التحويلات والإجراءات التشغيلية في مساحة واحدة"
@@ -1127,7 +1132,7 @@ export function GovernmentDetails() {
             <Check /> إغلاق
           </button>
           <button
-            onClick={() => { setArchiveCategory(selected.archiveCategory || "عام"); setArchiveKeywords(selected.keywords || ""); setCloseReasonText(""); setActionError(""); setShowArchiveForm(true); }}
+            onClick={() => { setArchiveCategory(selected.archiveCategory || "عام"); setArchiveCode(selected.archiveCode || ""); setArchiveKeywords(selected.keywords || ""); setCloseReasonText(""); setActionError(""); setShowArchiveForm(true); }}
           >
             <Archive /> إغلاق وأرشفة
           </button>
@@ -1193,6 +1198,16 @@ export function GovernmentDetails() {
               </p>
             </div>
             <div>
+              {["جديد", "مسودة", "معاد للتعديل"].includes(selected.status) && (
+                <button
+                  className="primary"
+                  onClick={() =>
+                    doStatus("بانتظار التدقيق", "إرسال المراسلة للتدقيق")
+                  }
+                >
+                  <Send /> إرسال للتدقيق
+                </button>
+              )}
               <button
                 className="icon"
                 onClick={() => {
@@ -1222,6 +1237,15 @@ export function GovernmentDetails() {
               <FileClock /> إصدار تصحيح
             </button>
           </div>
+          {(selected.archived || selected.status === "مؤرشف") && (
+            <section className="archive-record-summary">
+              <Archive />
+              <div><small>سجل الأرشيف المركزي</small><b>رمز الأرشيف: {selected.archiveCode || "غير محدد"}</b></div>
+              <span><small>التصنيف</small><b>{selected.archiveCategory || "عام"}</b></span>
+              <span><small>تاريخ الأرشفة</small><b>{selected.archivedAt ? new Date(selected.archivedAt).toLocaleDateString("ar-PS") : "غير مسجل"}</b></span>
+              <span><small>قام بالأرشفة</small><b>{selected.archivedBy || "غير مسجل"}</b></span>
+            </section>
+          )}
           <div className="document-meta">
             <span>
               تاريخ المراسلة <b>{selected.date}</b>
@@ -1272,7 +1296,7 @@ export function GovernmentDetails() {
             </details>
           )}
           <div className="attachment-block">
-            <h3>المرفقات</h3>
+            <div className="attachment-block-head"><div><h3>المرفقات</h3><small>{selected.attachments.length} ملفات مرتبطة بالمعاملة</small></div><div className="detail-attachment-actions"><label><Upload/> إضافة ملف<input type="file" multiple accept=".pdf,.doc,.docx,image/*" onChange={(e)=>{appendToSelected(e.target.files,'files');e.target.value=''}}/></label><label className="camera"><Camera/> تصوير من الجوال<input type="file" accept="image/*" capture="environment" multiple onChange={(e)=>{appendToSelected(e.target.files,'camera');e.target.value=''}}/></label></div></div>
             {selected.attachments.length ? (
               selected.attachments.map((a) => (
                 <article key={a.id}>
@@ -1376,7 +1400,7 @@ export function GovernmentDetails() {
                 <RotateCcw /> إعادة فتح
               </button>
             ) : (
-              <button onClick={() => archive(selected.id)}>
+              <button onClick={() => { setArchiveCategory(selected.archiveCategory || "عام"); setArchiveCode(selected.archiveCode || ""); setArchiveKeywords(selected.keywords || ""); setCloseReasonText(""); setActionError(""); setShowArchiveForm(true); }}>
                 <Archive /> أرشفة
               </button>
             )}
@@ -1474,12 +1498,13 @@ export function GovernmentDetails() {
               <select value={archiveCategory} onChange={(e) => setArchiveCategory(e.target.value)}><option>عام</option><option>إداري</option><option>مالي</option><option>مشاريع وأشغال</option><option>مياه وصرف صحي</option><option>شؤون موظفين</option><option>قرارات وتعاميم</option></select>
             </Field>
             <Field label="الكلمات المفتاحية"><input value={archiveKeywords} onChange={(e) => setArchiveKeywords(e.target.value)} placeholder="افصل الكلمات بفاصلة، مثال: مياه، صيانة، 2026" /></Field>
+            <Field label="رمز الأرشيف (اختياري)"><input value={archiveCode} onChange={(e) => setArchiveCode(e.target.value)} placeholder="غير محدد — يعتمد بعد إقرار نظام الترميز" /></Field>
             <Field label="سبب الإغلاق (إلزامي)"><textarea rows={4} value={closeReasonText} onChange={(e) => { setCloseReasonText(e.target.value); setActionError(""); }} placeholder="سبب إنهاء المعاملة وأرشفتها" /></Field>
           </div>
           {actionError && <p className="form-error">{actionError}</p>}
           <div className="actions">
             <button className="secondary" onClick={() => setShowArchiveForm(false)}>تراجع</button>
-            <button className="primary" onClick={() => { if (!closeReasonText.trim()) return setActionError("اكتب سبب الإغلاق قبل الأرشفة."); update(selected.id, { archiveCategory, keywords: archiveKeywords }, "استكمال بيانات الأرشفة"); closeMail(selected.id, closeReasonText); archive(selected.id); setShowArchiveForm(false); }}><Archive /> إغلاق وأرشفة</button>
+            <button className="primary" onClick={() => { if (!closeReasonText.trim()) return setActionError("اكتب سبب الإغلاق قبل الأرشفة."); update(selected.id, { archiveCategory, archiveCode: archiveCode.trim() || undefined, keywords: archiveKeywords }, "استكمال بيانات الأرشفة"); closeMail(selected.id, closeReasonText); archive(selected.id); setShowArchiveForm(false); }}><Archive /> إغلاق وأرشفة</button>
           </div>
         </Modal>
       )}
@@ -1700,6 +1725,6 @@ export function GovernmentDetails() {
           </div>
         </Modal>
       )}
-    </>
+    </div>
   );
 }

@@ -14,8 +14,11 @@ import { Deadline, deadlineState, PageHead, Status } from "./components";
 import { label, useStore } from "./store";
 
 export function ProfessionalDashboard() {
-  const mail = useStore((s) => s.mail),
+  const allMail = useStore((s) => s.mail),
+    audit = useStore((s) => s.audit),
+    user = useStore((s) => s.user),
     navigate = useNavigate();
+  const mail = useMemo(()=>user.role==='موظف'?allMail.filter(m=>m.employee===user.name||m.department===user.department||m.copies?.includes(user.name)||m.copies?.includes(user.department)):allMail,[allMail,user]);
   const incomingToday = mail.filter(
     (m) =>
       m.type === "incoming" && m.date === new Date().toISOString().slice(0, 10),
@@ -183,6 +186,16 @@ export function ProfessionalDashboard() {
           <button className="priority-more" onClick={()=>navigate('/app/followup')}>عرض جميع المتابعات</button>
         </section>
       </div>
+      <div className="dashboard-secondary-grid">
+        <section className="panel recent-mail-card">
+          <div className="panel-head"><div><small>آخر ما سُجل</small><h2>آخر المراسلات</h2></div><button className="text-btn" onClick={()=>navigate('/app/inbox')}>عرض الكل</button></div>
+          <div className="dashboard-mail-list">{mail.slice(0,5).map(m=><button key={m.id} onClick={()=>navigate(`/app/mail/${m.id}`)}><div><b>{m.subject}</b><small>{m.number} · {m.type==='incoming'?'وارد':m.type==='outgoing'?'صادر':'داخلي'} · {m.from||m.to}</small></div><span><Status>{m.status}</Status><time>{m.date}</time></span><Eye/></button>)}</div>
+        </section>
+        <section className="panel recent-activity-card">
+          <div className="panel-head"><div><small>سجل رقابي</small><h2>النشاط الأخير</h2></div></div>
+          <div className="dashboard-activity-list">{audit.slice(0,5).map(item=><article key={item.id}><i/><div><b>{item.action}</b><p>{item.details}</p><small>{item.user} · {new Date(item.time).toLocaleString('ar-PS')}</small></div></article>)}</div>
+        </section>
+      </div>
     </>
   );
 }
@@ -193,6 +206,7 @@ type InboxTab =
   | "action"
   | "waiting"
   | "late"
+  | "today"
   | "closure"
   | "extension"
   | "urgent"
@@ -209,11 +223,12 @@ export function ProfessionalInbox() {
     mark = useStore((s) => s.markRead),
     navigate = useNavigate(),
     [params] = useSearchParams();
-  const [tab, setTab] = useState<InboxTab>("all"),
+  const requestedView=params.get("view") as InboxTab|null;
+  const [tab, setTab] = useState<InboxTab>(requestedView||"all"),
     [priority, setPriority] = useState("all"),
     [query, setQuery] = useState(params.get("q") || ""),
     [showMoreTabs, setShowMoreTabs] = useState(false);
-  const assigned = mail.filter((m) => !m.archived);
+  const assigned = mail.filter((m) => !m.archived && (user.role !== 'موظف' || m.employee === user.name || m.department === user.department || m.copies?.some((x) => x === user.name || x === user.department)));
   const match = (m: (typeof mail)[number], t: InboxTab) =>
     t === "all" ||
     (t === "unread" && !m.read) ||
@@ -221,6 +236,7 @@ export function ProfessionalInbox() {
       ["جديد", "قيد المعالجة", "تم التحويل"].includes(m.status)) ||
     (t === "waiting" && m.status === "بانتظار الرد") ||
     (t === "late" && deadlineState(m.dueDate, m.status) === "overdue") ||
+    (t === "today" && deadlineState(m.dueDate, m.status) === "today") ||
     (t === "closure" &&
       Boolean(m.requiresClosure) &&
       !["تم الإنجاز", "مؤرشف"].includes(m.status)) ||
@@ -241,6 +257,7 @@ export function ProfessionalInbox() {
     ["action", "يتطلب إجراء"],
     ["waiting", "بانتظار الرد"],
     ["late", "انتهى موعد الرد"],
+    ["today", "مستحق اليوم"],
     ["closure", "طلبات بحاجة إلى إغلاق"],
     ["extension", "طلبات تمديد"],
     ["urgent", "يتطلب رد عاجل"],

@@ -7,15 +7,12 @@ import {
   Bell,
   BookUser,
   Building2,
-  CalendarDays,
   ChevronDown,
   ChevronLeft,
   Clock3,
   FileInput,
   FileOutput,
-  FileSignature,
   FolderArchive,
-  FolderKanban,
   Home,
   Inbox,
   LockKeyhole,
@@ -25,20 +22,22 @@ import {
   MessageSquareText,
   PenLine,
   Plus,
-  ScanLine,
   Search,
   Settings,
   ShieldCheck,
   UserCheck,
+  RefreshCw,
   UserRound,
   Users,
   History,
   X,
 } from "lucide-react";
 import { useStore } from "./store";
+import { canAccessPath } from "./access";
 export const nav = [
   ["/app/dashboard", "لوحة التحكم", Home],
   ["/app/inbox", "صندوق الوارد الخاص بي", Inbox],
+  ["/app/correspondence", "كل المراسلات", FolderArchive],
   ["/app/approvals", "الاعتمادات", ShieldCheck],
   ["/app/followup", "الإحالات والمتابعة", ArrowLeftRight],
   ["/app/search", "الاستعلام المتقدم", Search],
@@ -46,13 +45,9 @@ export const nav = [
   ["/app/outgoing", "البريد الصادر", FileOutput],
   ["/app/internal", "المراسلات الداخلية", MessageSquareText],
   ["/app/circulars", "التعاميم", Megaphone],
-  ["/app/calendar", "أجندة المراسلات", CalendarDays],
   ["/app/delegations", "التفويض والإنابة", UserCheck],
-  ["/app/templates", "قوالب المراسلات", FileSignature],
   ["/app/directory", "دليل الجهات والتوزيع", BookUser],
-  ["/app/cases", "ملفات الموضوع", FolderKanban],
   ["/app/compose/outgoing", "إنشاء مراسلة", PenLine],
-  ["/app/scanner", "مركز المسح الضوئي", ScanLine],
   ["/app/archive", "الأرشيف الإلكتروني", FolderArchive],
   ["/app/reports", "التقارير", BarChart3],
   ["/app/departments", "الهيكل التنظيمي", Building2],
@@ -62,13 +57,29 @@ export const nav = [
   ["/app/security", "سياسات السرية", LockKeyhole],
   ["/app/settings", "إعدادات المراسلات", Settings],
 ] as const;
+const navSections = [
+  ["الرئيسية", ["/app/dashboard"]],
+  ["مساحة العمل", ["/app/inbox", "/app/approvals", "/app/followup", "/app/search"]],
+  ["المراسلات", ["/app/correspondence", "/app/incoming", "/app/outgoing", "/app/internal", "/app/circulars", "/app/compose/outgoing"]],
+  ["الأرشيف والأدوات", ["/app/archive", "/app/directory"]],
+  ["إدارة النظام", ["/app/reports", "/app/departments", "/app/users", "/app/workflows", "/app/activity", "/app/security", "/app/settings"]],
+] as const;
 function ProfileMenu() {
   const [open, setOpen] = useState(false),
     [avatar, setAvatar] = useState(
       () => localStorage.getItem("municipality-profile-avatar") || "",
     );
   const user = useStore((s) => s.user),
+    setUser = useStore((s) => s.setUser),
     navigate = useNavigate();
+  const switchAccount = () => {
+    const ordinary = user.role === "موظف";
+    setUser(ordinary
+      ? { name: "موظف الديوان", role: "مأمور المراسلات", department: "الديوان" }
+      : { name: "سارة خالد", role: "موظف", department: "الدائرة المالية" });
+    setOpen(false);
+    navigate("/app/dashboard");
+  };
   useEffect(() => {
     const handler = (event: Event) =>
       setAvatar(String((event as CustomEvent).detail || ""));
@@ -105,8 +116,11 @@ function ProfileMenu() {
           >
             <Settings /> الإعدادات
           </button>
-          <button>
-            <LogOut /> تسجيل الخروج
+          <button onClick={switchAccount}>
+            <RefreshCw /> {user.role === "موظف" ? "العودة لحساب الديوان" : "تجربة حساب موظف عادي"}
+          </button>
+          <button onClick={()=>setOpen(false)}>
+            <LogOut /> إغلاق القائمة
           </button>
         </div>
       )}
@@ -115,6 +129,7 @@ function ProfileMenu() {
 }
 export function Layout({ children }: { children: React.ReactNode }) {
   const [side, setSide] = useState(false),
+    [collapsed, setCollapsed] = useState(()=>localStorage.getItem("municipality-sidebar-collapsed")==="true"),
     [notes, setNotes] = useState(false),
     [q, setQ] = useState("");
   const { notifications, user, mail } = useStore();
@@ -164,8 +179,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (q.trim()) navigate(`/app/inbox?q=${encodeURIComponent(q)}`);
   };
   return (
-    <div className="shell">
-      <aside className={side ? "sidebar open" : "sidebar"}>
+    <div className={`shell ${collapsed ? "sidebar-collapsed" : ""}`}>
+      <aside className={`${side ? "sidebar open" : "sidebar"} ${collapsed ? "collapsed" : ""}`}>
         <div className="brand">
           <div className="seal">م</div>
           <div>
@@ -176,21 +191,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <X />
           </button>
         </div>
-        <nav>
-          {nav.map(([to, text, Icon]) => (
-            <NavLink
-              to={to}
-              key={to}
-              onClick={() => setSide(false)}
-              className={({ isActive }) => (isActive ? "active" : "")}
-            >
-              <Icon />
-              <span>{text}</span>
-              {to === "/app/inbox" && unread > 0 && <b>{unread}</b>}
-            </NavLink>
-          ))}
+        <nav aria-label="القائمة الرئيسية">
+          {navSections.map(([section,paths])=>{
+            const items=nav.filter(([to])=>paths.includes(to as never)&&canAccessPath(user,to));
+            return items.length?<section className="nav-section" key={section}><h3>{section}</h3>{items.map(([to,text,Icon])=><NavLink title={collapsed?text:undefined} to={to} key={to} onClick={()=>setSide(false)} className={({isActive})=>isActive?"active":""}><Icon/><span>{text}</span>{to==="/app/inbox"&&unread>0&&<b>{unread}</b>}</NavLink>)}</section>:null;
+          })}
         </nav>
         <div className="side-foot">
+          <button className="sidebar-collapse" title={collapsed?"توسيع القائمة":"طي القائمة"} onClick={()=>{const next=!collapsed;setCollapsed(next);localStorage.setItem("municipality-sidebar-collapsed",String(next))}}><ChevronLeft/></button>
           <Users /> <span>متصل بالنظام الرئيسي</span>
         </div>
       </aside>
