@@ -105,6 +105,7 @@
   grid-template-columns: 1fr 250px;
   gap: 15px;
 }
+.users-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}.users-summary article{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--card,#fff);box-shadow:0 7px 22px #1722350b}.users-summary article>svg{width:39px;height:39px;padding:9px;border-radius:11px;background:#f6e7e8;color:var(--red)}.users-summary b,.users-summary span{display:block}.users-summary b{font-size:20px}.users-summary span{color:var(--muted);font-size:13px}.permission-panel{scroll-margin-top:110px}
 .user-filters > div {
   display: flex;
   align-items: center;
@@ -235,6 +236,76 @@
 .workflow-summary span {
   color: var(--muted);
 }
+.workflow-designer {
+  margin-bottom: 16px;
+  padding: 19px;
+  border-top: 3px solid var(--red);
+}
+.workflow-designer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.workflow-designer-head small { color: var(--red); font-weight: 800; }
+.workflow-designer-head h2 { margin: 4px 0; font-size: 20px; }
+.workflow-designer-head p { margin: 0; color: var(--muted); font-size: 13px; }
+.workflow-designer-head > span {
+  padding: 7px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.workflow-designer-head > span.active { background: #e3f6ef; color: #087154; }
+.workflow-designer-head > span.paused { background: #f0f2f4; color: #667385; }
+.workflow-visual-path {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  margin: 22px 0 16px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+}
+.workflow-node-wrap { display: flex; align-items: center; min-width: 0; }
+.workflow-node-wrap > article {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card, #fff);
+}
+.workflow-node-wrap > article i {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #edf1f5;
+  color: #344a61;
+  font-style: normal;
+  font-weight: 900;
+}
+.workflow-node-wrap > article.start i { background: #e5f5ef; color: #087154; }
+.workflow-node-wrap > article.finish i { background: #f8e6e7; color: var(--red); }
+.workflow-node-wrap small,
+.workflow-node-wrap b { display: block; }
+.workflow-node-wrap small { color: var(--muted); font-size: 10px; margin-bottom: 3px; }
+.workflow-node-wrap b { font-size: 13px; }
+.workflow-node-wrap > em { padding: 0 10px; color: var(--red); font-size: 22px; font-style: normal; font-weight: 800; }
+.workflow-designer-meta {
+  display: flex;
+  gap: 22px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+.workflow-designer-meta span { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.workflow-designer-meta svg { width: 17px; color: var(--muted); }
 .workflow-rules {
   overflow: auto;
 }
@@ -253,7 +324,11 @@
 }
 .rule-row {
   border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: .18s ease;
 }
+.rule-row:hover { background: #faf6f6; }
+.rule-row.selected { background: #fff4f4; box-shadow: inset -3px 0 var(--red); }
 .rule-row small {
   display: block;
   color: var(--muted);
@@ -303,5 +378,13 @@
   .workflow-summary {
     grid-template-columns: 1fr;
   }
+  .workflow-designer { padding: 14px; }
+  .workflow-designer-head { display: block; }
+  .workflow-designer-head > span { display: inline-block; margin-top: 10px; }
+  .workflow-visual-path { justify-content: flex-start; }
+  .workflow-node-wrap > article { min-width: 150px; padding: 10px; }
+  .workflow-node-wrap > em { padding: 0 6px; }
+  .workflow-designer-meta { display: grid; gap: 8px; }
   .org-employees{grid-template-columns:1fr}.org-employees-head{align-items:stretch;flex-direction:column}
+  .users-summary{grid-template-columns:1fr;gap:8px}.users-summary article{padding:11px 12px}.users-table{padding:10px;overflow:visible}.users-head{display:none}.users-row{min-width:0;grid-template-columns:1fr 1fr;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px}.users-row>.user-name{grid-column:1/-1;padding-bottom:9px;border-bottom:1px solid var(--line)}.users-row>span:not(.user-name){display:block;padding:7px 8px;border-radius:8px;background:#f7f8fa;font-size:13px}.users-row>span:nth-child(2):before{content:"الدور"}.users-row>span:nth-child(3):before{content:"الوحدة"}.users-row>span:nth-child(4):before{content:"السرية"}.users-row>span:not(.user-name):before{display:block;color:var(--muted);font-size:11px;margin-bottom:3px}.users-row>.status{align-self:stretch;justify-content:center}.users-row>button{grid-column:1/-1;min-height:42px}.permission-panel{scroll-margin-top:90px}
 }

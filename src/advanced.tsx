@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, ArrowLeftRight, BarChart3, CheckCircle2, Download, FileText, Search, ShieldCheck, UserRound } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowLeftRight, BarChart3, CheckCircle2, Clock3, Download, FileText, Paperclip, Search, ShieldCheck, UserRound } from 'lucide-react';
 import { deadlineState, PageHead, Status } from './components';
 import { label, useStore } from './store';
 
@@ -14,8 +14,9 @@ const downloadCsv = (name:string, rows:string[][]) => {
 
 export function AdvancedReports(){
   const mail=useStore(s=>s.mail);
-  const [period,setPeriod]=useState('all'),[reportType,setReportType]=useState<'overview'|'entities'|'users'|'followup'|'deadlines'|'classification'|'closed'>('overview');
-  const visible=useMemo(()=>mail.filter(m=>period==='all'||m.date.startsWith(period)),[mail,period]);
+  const [period,setPeriod]=useState('all'),[fromDate,setFromDate]=useState(''),[toDate,setToDate]=useState(''),[filterType,setFilterType]=useState(''),[filterDepartment,setFilterDepartment]=useState(''),[filterStatus,setFilterStatus]=useState(''),[filterPriority,setFilterPriority]=useState(''),[qualityIssue,setQualityIssue]=useState<'owner'|'due'|'files'|null>(null),[reportType,setReportType]=useState<'overview'|'entities'|'users'|'followup'|'deadlines'|'classification'|'closed'>('overview');
+  const visible=useMemo(()=>{const now=new Date(),today=now.toISOString().slice(0,10),startOfWeek=new Date(now);startOfWeek.setDate(now.getDate()-((now.getDay()+6)%7));const weekStart=startOfWeek.toISOString().slice(0,10),month=today.slice(0,7),year=today.slice(0,4);return mail.filter(m=>period==='all'||(period==='today'&&m.date===today)||(period==='week'&&m.date>=weekStart&&m.date<=today)||(period==='month'&&m.date.startsWith(month))||(period==='year'&&m.date.startsWith(year))||(period==='custom'&&(!fromDate||m.date>=fromDate)&&(!toDate||m.date<=toDate))).filter(m=>!filterType||m.type===filterType).filter(m=>!filterDepartment||m.department===filterDepartment).filter(m=>!filterStatus||m.status===filterStatus).filter(m=>!filterPriority||m.priority===filterPriority)},[mail,period,fromDate,toDate,filterType,filterDepartment,filterStatus,filterPriority]);
+  const departmentsFilter=[...new Set(mail.map(m=>m.department).filter(Boolean))],statusesFilter=[...new Set(mail.map(m=>m.status))];
   const total=visible.length||1;
   const completed=visible.filter(m=>m.status==='تم الإنجاز'||m.status==='مؤرشف').length;
   const responseHours=visible.flatMap(m=>(m.replies||[]).map(r=>(new Date(r.time).getTime()-new Date(m.sentAt||`${m.date}T08:00:00`).getTime())/3600000)).filter(x=>x>=0);
@@ -28,12 +29,14 @@ export function AdvancedReports(){
   const users=[...new Set(visible.map(m=>m.employee).filter(Boolean))].map(name=>({name,count:visible.filter(m=>m.employee===name).length,completed:visible.filter(m=>m.employee===name&&['تم الإنجاز','مؤرشف'].includes(m.status)).length,late:visible.filter(m=>m.employee===name&&deadlineState(m.dueDate,m.status)==='overdue').length})).sort((a,b)=>b.count-a.count);
   const classifications=[...new Set(visible.map(m=>m.correspondenceKind||'غير مصنف'))].map(name=>({name,count:visible.filter(m=>(m.correspondenceKind||'غير مصنف')===name).length}));
   const secrecy=[...new Set(visible.map(m=>m.confidentiality||'داخلي'))].map(name=>({name,count:visible.filter(m=>(m.confidentiality||'داخلي')===name).length}));
+  const today=new Date().toISOString().slice(0,10),missingOwner=visible.filter(m=>!m.employee||!m.department),missingDue=visible.filter(m=>!m.dueDate&&!['تم الإنجاز','مؤرشف','تم الإرسال'].includes(m.status)),withoutFiles=visible.filter(m=>!m.attachments.length),exceptions=visible.filter(m=>m.dueDate&&m.dueDate<today&&!['تم الإنجاز','مؤرشف','مغلقة'].includes(m.status));
+  const qualityRows=qualityIssue==='owner'?missingOwner:qualityIssue==='due'?missingDue:qualityIssue==='files'?withoutFiles:[];
   const exportReport=()=>downloadCsv(`تقرير-${reportType}.csv`,[['الرقم','النوع','الموضوع','القسم','الموظف','الحالة','التاريخ','المهلة'],...reportMail.map(m=>[m.number,label(m.type),m.subject,m.department,m.employee,m.status,m.date,m.dueDate||''])]);
   return <>
     <PageHead title="التقارير ومؤشرات الأداء" subtitle="مؤشرات لحظية تساعد الإدارة على قياس الإنجاز والالتزام"/>
     <div className="report-switcher">{([['overview','إحصائيات المراسلات'],['entities','إحصائيات الجهات'],['users','إحصائيات المستخدمين'],['followup','متابعات المسؤول'],['deadlines','المواعيد المتأخرة'],['classification','النوع والسرية'],['closed','المعاملات المغلقة']] as const).map(([key,title])=><button className={reportType===key?'active':''} key={key} onClick={()=>setReportType(key)}>{title}</button>)}</div>
-    <div className="toolbar-row">
-      <div className="filters compact"><label>الفترة<select value={period} onChange={e=>setPeriod(e.target.value)}><option value="all">كل الفترات</option><option value="2026-08">آب 2026</option></select></label></div>
+    <div className="toolbar-row report-filter-toolbar">
+      <div className="filters compact"><label>الفترة<select value={period} onChange={e=>setPeriod(e.target.value)}><option value="all">كل الفترات</option><option value="today">اليوم</option><option value="week">هذا الأسبوع</option><option value="month">هذا الشهر</option><option value="year">هذه السنة</option><option value="custom">فترة مخصصة</option></select></label><label>النوع<select value={filterType} onChange={e=>setFilterType(e.target.value)}><option value="">كل الأنواع</option><option value="incoming">وارد</option><option value="outgoing">صادر</option><option value="internal">داخلي</option></select></label><label>القسم<select value={filterDepartment} onChange={e=>setFilterDepartment(e.target.value)}><option value="">كل الأقسام</option>{departmentsFilter.map(x=><option key={x}>{x}</option>)}</select></label><label>الحالة<select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}><option value="">كل الحالات</option>{statusesFilter.map(x=><option key={x}>{x}</option>)}</select></label><label>الأولوية<select value={filterPriority} onChange={e=>setFilterPriority(e.target.value)}><option value="">كل الأولويات</option>{['عادي','مهم','عاجل','عاجل جداً'].map(x=><option key={x}>{x}</option>)}</select></label>{period==='custom'&&<><label>من تاريخ<input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)}/></label><label>إلى تاريخ<input type="date" value={toDate} onChange={e=>setToDate(e.target.value)}/></label></>}</div>
       <div className="actions no-margin"><button className="secondary" onClick={exportReport}><Download/> تصدير CSV</button><button className="primary" onClick={()=>window.print()}>طباعة التقرير</button></div>
     </div>
     <div className="stats report-stats">
@@ -51,8 +54,13 @@ export function AdvancedReports(){
     </div>
     <div className="report-grid">
       <section className="panel"><h2>قياس الالتزام</h2><div className="kpi-list"><div><span>مراسلات منجزة</span><b>{completed}</b></div><div><span>متأخرة</span><b>{visible.filter(m=>m.status==='متأخر').length}</b></div><div><span>بانتظار الرد</span><b>{visible.filter(m=>m.status==='بانتظار الرد').length}</b></div></div></section>
-      <section className="panel"><h2>الأولويات</h2>{['عاجل جداً','عاجل','عادي'].map(p=><div className="rank" key={p}><span>{p}</span><strong>{visible.filter(m=>m.priority===p).length} مراسلة</strong></div>)}</section>
+      <section className="panel"><h2>الأولويات</h2>{['عاجل جداً','عاجل','مهم','عادي'].map(p=><div className="rank" key={p}><span>{p}</span><strong>{visible.filter(m=>m.priority===p).length} مراسلة</strong></div>)}</section>
     </div>
+    <div className="report-grid report-audit-grid">
+      <section className="panel"><div className="panel-head"><div><h2>جودة البيانات</h2><p>اضغط على المؤشر لمراجعة المراسلات المرتبطة</p></div><ShieldCheck/></div><div className="quality-list"><button className={qualityIssue==='owner'?'active':''} onClick={()=>setQualityIssue(qualityIssue==='owner'?null:'owner')}><span><UserRound/><b>دون مسؤول أو قسم</b></span><strong>{missingOwner.length}</strong></button><button className={qualityIssue==='due'?'active':''} onClick={()=>setQualityIssue(qualityIssue==='due'?null:'due')}><span><Clock3/><b>دون موعد متابعة</b></span><strong>{missingDue.length}</strong></button><button className={qualityIssue==='files'?'active':''} onClick={()=>setQualityIssue(qualityIssue==='files'?null:'files')}><span><Paperclip/><b>دون مرفقات</b></span><strong>{withoutFiles.length}</strong></button></div></section>
+      <section className="panel"><div className="panel-head"><div><h2>الاستثناءات التشغيلية</h2><p>معاملات متجاوزة للموعد وتحتاج تدخلاً</p></div><AlertTriangle/></div><div className="exception-list">{exceptions.length?exceptions.slice(0,6).map(m=><button key={m.id} onClick={()=>location.assign(`/app/mail/${m.id}`)}><span><b>{m.subject}</b><small>{m.number} · {m.employee||'دون مسؤول'}</small></span><Status>متأخر منذ {m.dueDate}</Status></button>):<p className="muted">لا توجد استثناءات متأخرة ضمن الفترة.</p>}</div></section>
+    </div>
+    {qualityIssue&&<section className="panel quality-results"><div className="panel-head"><div><h2>مراسلات تحتاج مراجعة</h2><p>{qualityRows.length} مراسلة مرتبطة بالمؤشر المحدد</p></div><button className="secondary" onClick={()=>setQualityIssue(null)}>إغلاق القائمة</button></div><div className="report-mail-list">{qualityRows.map(m=><button key={m.id} onClick={()=>location.assign(`/app/mail/${m.id}`)}><div><b>{m.subject}</b><span>{m.number} · {m.department||'دون قسم'} · {m.employee||'دون مسؤول'}</span></div><Status>{m.status}</Status><strong>عرض</strong></button>)}</div></section>}
   </>;
 }
 

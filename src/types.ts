@@ -1,8 +1,8 @@
 export type MailType='incoming'|'outgoing'|'internal';
-export type Priority='عادي'|'عاجل'|'عاجل جداً';
-export type CorrespondenceKind='مراسلة داخلية'|'مذكرة داخلية'|'إحالة'|'تعميم'|'نسخة للعلم'|'طلب إجراء';
+export type Priority='عادي'|'مهم'|'عاجل'|'عاجل جداً';
+export type CorrespondenceKind='كتاب وارد'|'كتاب صادر'|'مراسلة داخلية'|'مذكرة داخلية'|'إحالة'|'تعميم'|'نسخة للعلم'|'طلب إجراء';
 export type Confidentiality='داخلي'|'مقيد'|'سري'|'سري جداً';
-export interface Attachment {id:string;name:string;size:string;url?:string}
+export interface Attachment {id:string;name:string;size:string;url?:string;mimeType?:string;uploadedAt?:string;uploadedBy?:string;version?:number}
 export interface Note {id:string;text:string;author:string;time:string}
 export interface ReplyEntry {id:string;text:string;author:string;time:string;attachments?:Attachment[]}
 export interface Workflow {id:string;from:string;to:string;action:string;time:string;status:string;note?:string}

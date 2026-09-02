@@ -1,6 +1,6 @@
 import type { Mail } from './types';
 
-export type DashboardPeriod = 'today'|'7days'|'month'|'previousMonth'|'year'|'custom';
+export type DashboardPeriod = 'today'|'7days'|'week'|'month'|'previousMonth'|'year'|'custom';
 export type AnalysisMode = 'daily'|'weekly'|'monthly';
 export type DateRange = { from: string; to: string };
 const DAY = 86400000;
@@ -13,6 +13,7 @@ export function getPeriodRange(period:DashboardPeriod, custom?:DateRange, refere
   const today=new Date(reference);today.setHours(0,0,0,0);
   if(period==='today')return {from:iso(today),to:iso(today)};
   if(period==='7days'){const from=new Date(today);from.setDate(from.getDate()-6);return {from:iso(from),to:iso(today)}}
+  if(period==='week'){const from=new Date(today);from.setDate(from.getDate()-today.getDay());const to=new Date(from);to.setDate(to.getDate()+6);return {from:iso(from),to:iso(to)}}
   if(period==='month')return {from:iso(new Date(today.getFullYear(),today.getMonth(),1)),to:iso(new Date(today.getFullYear(),today.getMonth()+1,0))};
   if(period==='previousMonth')return {from:iso(new Date(today.getFullYear(),today.getMonth()-1,1)),to:iso(new Date(today.getFullYear(),today.getMonth(),0))};
   if(period==='year')return {from:iso(new Date(today.getFullYear(),0,1)),to:iso(new Date(today.getFullYear(),11,31))};
@@ -28,7 +29,7 @@ export function previousRange(range:DateRange):DateRange {
 export const inRange=(mail:Mail,range:DateRange)=>mail.date>=range.from&&mail.date<=range.to;
 export const getOverdueCorrespondence=(mail:Mail[],today=iso(new Date()))=>mail.filter(m=>m.dueDate!==undefined&&m.dueDate<today&&!isCompleted(m));
 export const getDueTodayCorrespondence=(mail:Mail[],today=iso(new Date()))=>mail.filter(m=>m.dueDate===today&&!isCompleted(m));
-export const getPriorityCorrespondence=(mail:Mail[])=>mail.filter(m=>['عاجل','عاجل جداً'].includes(m.priority)&&!isCompleted(m));
+export const getPriorityCorrespondence=(mail:Mail[])=>mail.filter(m=>['مهم','عاجل','عاجل جداً'].includes(m.priority)&&!isCompleted(m));
 export const getCompletionRate=(mail:Mail[])=>mail.length?Math.round(mail.filter(isCompleted).length/mail.length*100):0;
 
 export function getDashboardStatistics(all:Mail[],range:DateRange) {

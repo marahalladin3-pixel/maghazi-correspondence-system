@@ -1,5 +1,5 @@
 import {useMemo,useState} from 'react';
-import {Archive,ArrowLeftRight,CheckCircle2,Clock3,Eye,FileSearch,FolderArchive,Search,TimerReset} from 'lucide-react';
+import {Archive,ArrowLeftRight,CheckCircle2,Clock3,Download,Eye,FileSearch,FolderArchive,Printer,Search,TimerReset} from 'lucide-react';
 import {useNavigate} from 'react-router-dom';
 import {Deadline,deadlineState,Empty,PageHead,Status} from './components';
 import {departmentNames} from './data';
@@ -11,6 +11,7 @@ export function ReferralFollowup(){
   const referrals=useMemo(()=>mail.filter(m=>m.workflow.length>0||['تم التحويل','قيد المعالجة','بانتظار الرد','متأخر'].includes(m.status)),[mail]);
   const matchState=(m:typeof mail[number])=>state==='all'||(state==='late'&&deadlineState(m.dueDate,m.status)==='overdue')||(state==='waiting'&&m.status==='بانتظار الرد')||(state==='open'&&!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status))||(state==='done'&&['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status));
   const rows=referrals.filter(m=>matchState(m)&&(!department||m.department===department)&&(!query||[m.number,m.subject,m.employee,m.department].some(v=>v.includes(query))));
+  const exportFollowup=()=>{const quote=(value:string)=>`"${value.replaceAll('"','""')}"`;const lines=[['رقم المراسلة','الموضوع','المسؤول الحالي','الوحدة','الإجراء المطلوب','المهلة','الحالة'],...rows.map(m=>{const last=m.workflow.at(-1);return [m.number,m.subject,m.employee||m.department,m.department,last?.action||'متابعة المراسلة',m.dueDate||'دون مهلة',m.status]})];const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(line=>line.map(value=>quote(String(value))).join(',')).join('\n')],{type:'text/csv;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=`متابعة-الإحالات-${new Date().toISOString().slice(0,10)}.csv`;anchor.click();URL.revokeObjectURL(url)};
   const stats=[
     ['إحالات مفتوحة',referrals.filter(m=>!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,ArrowLeftRight,'open'],
     ['متجاوزة للمهلة',referrals.filter(m=>deadlineState(m.dueDate,m.status)==='overdue').length,Clock3,'late'],
@@ -19,6 +20,7 @@ export function ReferralFollowup(){
   ] as const;
   return <>
     <PageHead title="الإحالات والمتابعة" subtitle="متابعة المحال إليه والمطلوب وتاريخ الاستحقاق والمسؤول الحالي"/>
+    <div className="actions end followup-export-actions"><button className="secondary" onClick={()=>window.print()}><Printer/> طباعة النتائج</button><button className="primary" onClick={exportFollowup} disabled={!rows.length}><Download/> تصدير المتابعة</button></div>
     <div className="followup-stats">{stats.map(([title,count,Icon,key])=><button className={state===key?'active':''} key={title} onClick={()=>setState(key)}><i><Icon/></i><div><b>{count}</b><span>{title}</span></div></button>)}</div>
     <section className="panel followup-filters">
       <div><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالرقم أو الموضوع أو المسؤول..."/></div>
@@ -39,8 +41,10 @@ export function ArchiveCenter(){
   const archived=mail.filter(m=>m.archived||m.status==='مؤرشف');
   const rows=archived.filter(m=>(!query||[m.number,m.subject,m.from,m.to,m.keywords||''].some(v=>v.includes(query)))&&(!year||m.date.startsWith(year))&&(!kind||m.correspondenceKind===kind)&&(!security||(m.confidentiality||'داخلي')===security)&&(!category||m.archiveCategory===category));
   const categories=[...new Set(archived.map(m=>m.archiveCategory).filter(Boolean))];
+  const exportResults=()=>{const quote=(value:string)=>`"${value.replaceAll('"','""')}"`;const lines=[['رقم المراسلة','الموضوع','التاريخ','الجهة','التصنيف','السرية','رمز الأرشيف'],...rows.map(m=>[m.number,m.subject,m.date,m.type==='outgoing'?m.to:m.from,m.archiveCategory||'عام',m.confidentiality||'داخلي',m.archiveCode||''])];const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(line=>line.map(value=>quote(String(value))).join(',')).join('\n')],{type:'text/csv;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=`نتائج-الأرشيف-${new Date().toISOString().slice(0,10)}.csv`;anchor.click();URL.revokeObjectURL(url)};
   return <>
     <PageHead title="الأرشيف الإلكتروني" subtitle="حفظ السجل المترابط واسترجاع الأصل والردود والإحالات والمرفقات وفق الصلاحية"/>
+    <div className="actions end archive-export-actions"><button className="secondary" onClick={()=>window.print()}><Printer/> طباعة النتائج</button><button className="primary" onClick={exportResults} disabled={!rows.length}><Download/> تصدير النتائج</button></div>
     <div className="archive-kpis"><article><FolderArchive/><div><b>{archived.length}</b><span>سجل مؤرشف</span></div></article><article><Archive/><div><b>{categories.length}</b><span>تصنيفات أرشيفية</span></div></article><article><Clock3/><div><b>7 سنوات</b><span>مدة الاحتفاظ الافتراضية</span></div></article></div>
     <section className="panel archive-filter-card">
       <div className="archive-query"><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث بالرقم أو الموضوع أو الجهة أو الكلمات المفتاحية..."/></div>
@@ -49,6 +53,7 @@ export function ArchiveCenter(){
         <select value={kind} onChange={e=>setKind(e.target.value)}><option value="">كل الأنواع</option>{['مراسلة داخلية','مذكرة داخلية','إحالة','تعميم','نسخة للعلم','طلب إجراء'].map(x=><option key={x}>{x}</option>)}</select>
         <select value={security} onChange={e=>setSecurity(e.target.value)}><option value="">كل مستويات السرية</option>{['داخلي','مقيد','سري','سري جداً'].map(x=><option key={x}>{x}</option>)}</select>
         <select value={category} onChange={e=>setCategory(e.target.value)}><option value="">كل التصنيفات</option>{categories.map(x=><option key={x}>{x}</option>)}</select>
+        <button className="secondary archive-reset" onClick={()=>{setQuery('');setYear('');setKind('');setSecurity('');setCategory('')}}>مسح الفلاتر</button>
       </div>
     </section>
     <section className="panel archive-results">

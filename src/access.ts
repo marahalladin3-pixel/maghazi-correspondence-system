@@ -14,10 +14,10 @@ const employeePaths = [
   '/app/compose',
   '/app/mail',
   '/app/profile',
+  '/verify',
 ];
 
 export const isOrdinaryEmployee = (user: SessionUser) => user.role === 'موظف';
 
 export const canAccessPath = (user: SessionUser, path: string) =>
   !isOrdinaryEmployee(user) || employeePaths.some((allowed) => path.startsWith(allowed));
-

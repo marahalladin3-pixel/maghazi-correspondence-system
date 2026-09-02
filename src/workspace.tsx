@@ -10,7 +10,7 @@ import {
   Star,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Deadline, deadlineState, PageHead, Status } from "./components";
+import { Deadline, deadlineState, Empty, PageHead, Status } from "./components";
 import { label, useStore } from "./store";
 
 export function ProfessionalDashboard() {
@@ -69,7 +69,6 @@ export function ProfessionalDashboard() {
         <span>نظام المراسلات والأرشيف الإلكتروني</span>
         <b>/</b>
         <strong>لوحة التحكم</strong>
-        <a href="#">العودة إلى بوابة البلدية</a>
       </div>
       <PageHead
         title="لوحة المتابعة التنفيذية"
@@ -290,6 +289,12 @@ export function ProfessionalInbox() {
         title="صندوق الوارد الخاص بي"
         subtitle="جميع المراسلات والمهام المحولة إليك مع المتابعة حسب الأولوية والحالة"
       />
+      <div className="inbox-kpis">
+        <button onClick={()=>setTab("unread")}><Mail/><span><small>جديد وغير مقروء</small><b>{assigned.filter(m=>!m.read).length}</b></span></button>
+        <button onClick={()=>setTab("action")}><Clock3/><span><small>مطلوب مني إجراء</small><b>{assigned.filter(m=>match(m,"action")).length}</b></span></button>
+        <button onClick={()=>setTab("late")}><Clock3/><span><small>متجاوزة للموعد</small><b>{assigned.filter(m=>match(m,"late")).length}</b></span></button>
+        <button onClick={()=>setTab("completed")}><CheckCircle2/><span><small>مكتملة ومؤرشفة</small><b>{assigned.filter(m=>match(m,"completed")).length}</b></span></button>
+      </div>
       <section className="inbox-workspace">
         <div className="inbox-search">
           <div>
@@ -307,6 +312,7 @@ export function ProfessionalInbox() {
             <option value="all">الأولوية أولاً</option>
             <option>عاجل جداً</option>
             <option>عاجل</option>
+            <option>مهم</option>
             <option>عادي</option>
           </select>
         </div>
@@ -389,6 +395,7 @@ export function ProfessionalInbox() {
               </div>
             </article>
           ))}
+          {!rows.length&&<Empty text="لا توجد مراسلات مطابقة لهذا التصنيف"/>}
         </div>
       </section>
     </>

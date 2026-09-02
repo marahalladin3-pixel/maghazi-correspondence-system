@@ -445,6 +445,11 @@ export function UsersPermissions() {
         action="إضافة مستخدم"
         onAction={() => setShowAddUser(true)}
       />
+      <div className="users-summary">
+        <article><Users/><div><b>{users.length}</b><span>مستخدمون مسجلون</span></div></article>
+        <article><ShieldCheck/><div><b>{users.filter(x=>x[4]==="نشط").length}</b><span>حسابات نشطة</span></div></article>
+        <article><Building2/><div><b>{new Set(users.map(x=>x[2])).size}</b><span>وحدات مرتبطة</span></div></article>
+      </div>
       <section className="panel user-filters">
         <div>
           <Search />
@@ -491,12 +496,12 @@ export function UsersPermissions() {
               <KeyRound /> {x[3]}
             </span>
             <Status>{x[4]}</Status>
-            <button onClick={() => setSelected(x[0])}>إدارة الصلاحيات</button>
+            <button onClick={() => { setSelected(x[0]); setTimeout(()=>document.getElementById("permission-panel")?.scrollIntoView({behavior:"smooth",block:"start"}),50); }}>إدارة الصلاحيات</button>
           </div>
         ))}
       </section>
       {selected && (
-        <section className="panel permission-panel">
+        <section className="panel permission-panel" id="permission-panel">
           <div className="panel-head">
             <div>
               <h2>صلاحيات {selected}</h2>
@@ -620,6 +625,7 @@ export function WorkflowSettings() {
     }),
     [saved, setSaved] = useState(false),
     [showAddRule, setShowAddRule] = useState(false),
+    [selectedRule, setSelectedRule] = useState(0),
     [newRule, setNewRule] = useState({name:"",path:"",approval:true,active:true});
   const toggle = (i: number, key: "approval" | "active") =>
     setRules(rules.map((r, n) => (n === i ? { ...r, [key]: !r[key] } : r)));
@@ -676,6 +682,23 @@ export function WorkflowSettings() {
           </div>
         </article>
       </div>
+      <section className="panel workflow-designer">
+        <div className="workflow-designer-head">
+          <div><small>المعاينة التشغيلية</small><h2>{rules[selectedRule]?.name}</h2><p>اضغط على أي مسار من القائمة لمعاينة انتقال المعاملة بين الجهات.</p></div>
+          <span className={rules[selectedRule]?.active ? "active" : "paused"}>{rules[selectedRule]?.active ? "مسار نشط" : "مسار متوقف"}</span>
+        </div>
+        <div className="workflow-visual-path">
+          {(rules[selectedRule]?.path || "").split("←").map((step, index, steps) => (
+            <div className="workflow-node-wrap" key={`${step}-${index}`}>
+              <article className={index === 0 ? "start" : index === steps.length - 1 ? "finish" : "review"}>
+                <i>{index + 1}</i><div><small>{index === 0 ? "نقطة البداية" : index === steps.length - 1 ? "الجهة المستلمة" : "مراجعة واعتماد"}</small><b>{step.trim()}</b></div>
+              </article>
+              {index < steps.length - 1 && <em>←</em>}
+            </div>
+          ))}
+        </div>
+        <div className="workflow-designer-meta"><span><ShieldCheck/><b>{rules[selectedRule]?.approval ? "يتطلب اعتمادًا قبل الانتقال" : "ينتقل دون اعتماد إضافي"}</b></span><span><Network/><b>{(rules[selectedRule]?.path || "").split("←").length} مراحل تنظيمية</b></span></div>
+      </section>
       <section className="panel workflow-rules">
         <div className="rules-head">
           <b>حالة الإرسال</b>
@@ -684,7 +707,7 @@ export function WorkflowSettings() {
           <b>قيد التشغيل</b>
         </div>
         {rules.map((r, i) => (
-          <div className="rule-row" key={r.name}>
+          <div className={`rule-row ${selectedRule === i ? "selected" : ""}`} key={r.name} role="button" tabIndex={0} onClick={() => setSelectedRule(i)} onKeyDown={e => (e.key === "Enter" || e.key === " ") && setSelectedRule(i)}>
             <div>
               <b>{r.name}</b>
               <small>يُطبّق هذا المسار تلقائيًا عند تحقق الحالة</small>

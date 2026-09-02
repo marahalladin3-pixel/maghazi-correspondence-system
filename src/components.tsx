@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Archive,
+  AlertTriangle,
   ArrowLeftRight,
   BarChart3,
   Bell,
@@ -9,6 +10,7 @@ import {
   Building2,
   ChevronDown,
   ChevronLeft,
+  CheckCheck,
   Clock3,
   FileInput,
   FileOutput,
@@ -36,19 +38,22 @@ import { useStore } from "./store";
 import { canAccessPath } from "./access";
 export const nav = [
   ["/app/dashboard", "لوحة التحكم", Home],
-  ["/app/inbox", "صندوق الوارد الخاص بي", Inbox],
   ["/app/correspondence", "كل المراسلات", FolderArchive],
-  ["/app/approvals", "الاعتمادات", ShieldCheck],
-  ["/app/followup", "الإحالات والمتابعة", ArrowLeftRight],
-  ["/app/search", "الاستعلام المتقدم", Search],
   ["/app/incoming", "البريد الوارد", FileInput],
   ["/app/outgoing", "البريد الصادر", FileOutput],
   ["/app/internal", "المراسلات الداخلية", MessageSquareText],
+  ["/app/compose/outgoing", "إنشاء مراسلة", PenLine],
+  ["/app/templates", "قوالب المراسلات", FileOutput],
   ["/app/circulars", "التعاميم", Megaphone],
+  ["/app/inbox", "صندوق الوارد الخاص بي", Inbox],
+  ["/app/approvals", "الاعتمادات", ShieldCheck],
+  ["/app/followup", "الإحالات والمتابعة", ArrowLeftRight],
+  ["/app/calendar", "أجندة المراسلات", Clock3],
+  ["/app/search", "الاستعلام المتقدم", Search],
   ["/app/delegations", "التفويض والإنابة", UserCheck],
   ["/app/directory", "دليل الجهات والتوزيع", BookUser],
-  ["/app/compose/outgoing", "إنشاء مراسلة", PenLine],
   ["/app/archive", "الأرشيف الإلكتروني", FolderArchive],
+  ["/app/cases", "ملفات الموضوع", Archive],
   ["/app/reports", "التقارير", BarChart3],
   ["/app/departments", "الهيكل التنظيمي", Building2],
   ["/app/users", "المستخدمون والصلاحيات", Users],
@@ -59,9 +64,9 @@ export const nav = [
 ] as const;
 const navSections = [
   ["الرئيسية", ["/app/dashboard"]],
-  ["مساحة العمل", ["/app/inbox", "/app/approvals", "/app/followup", "/app/search"]],
-  ["المراسلات", ["/app/correspondence", "/app/incoming", "/app/outgoing", "/app/internal", "/app/circulars", "/app/compose/outgoing"]],
-  ["الأرشيف والأدوات", ["/app/archive", "/app/directory"]],
+  ["المراسلات", ["/app/correspondence", "/app/incoming", "/app/outgoing", "/app/internal", "/app/compose/outgoing", "/app/templates", "/app/circulars"]],
+  ["مساحة العمل", ["/app/inbox", "/app/approvals", "/app/followup", "/app/calendar", "/app/search", "/app/delegations"]],
+  ["الأرشيف والأدوات", ["/app/archive", "/app/cases", "/app/directory"]],
   ["إدارة النظام", ["/app/reports", "/app/departments", "/app/users", "/app/workflows", "/app/activity", "/app/security", "/app/settings"]],
 ] as const;
 function ProfileMenu() {
@@ -72,9 +77,8 @@ function ProfileMenu() {
   const user = useStore((s) => s.user),
     setUser = useStore((s) => s.setUser),
     navigate = useNavigate();
-  const switchAccount = () => {
-    const ordinary = user.role === "موظف";
-    setUser(ordinary
+  const chooseAccount = (kind: "registry" | "employee") => {
+    setUser(kind === "registry"
       ? { name: "موظف الديوان", role: "مأمور المراسلات", department: "الديوان" }
       : { name: "سارة خالد", role: "موظف", department: "الدائرة المالية" });
     setOpen(false);
@@ -116,8 +120,12 @@ function ProfileMenu() {
           >
             <Settings /> الإعدادات
           </button>
-          <button onClick={switchAccount}>
-            <RefreshCw /> {user.role === "موظف" ? "العودة لحساب الديوان" : "تجربة حساب موظف عادي"}
+          <div className="account-menu-label">حسابات العرض</div>
+          <button className={user.role !== "موظف" ? "current-account" : ""} onClick={() => chooseAccount("registry")}>
+            <UserCheck /> موظف الديوان <small>كامل الصلاحيات التشغيلية</small>
+          </button>
+          <button className={user.role === "موظف" ? "current-account" : ""} onClick={() => chooseAccount("employee")}>
+            <RefreshCw /> سارة خالد <small>حساب موظف عادي</small>
           </button>
           <button onClick={()=>setOpen(false)}>
             <LogOut /> إغلاق القائمة
@@ -131,6 +139,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [side, setSide] = useState(false),
     [collapsed, setCollapsed] = useState(()=>localStorage.getItem("municipality-sidebar-collapsed")==="true"),
     [notes, setNotes] = useState(false),
+    [notificationFilter, setNotificationFilter] = useState<"all"|"urgent"|"unread">("all"),
+    [dismissedDue, setDismissedDue] = useState<string[]>(() => JSON.parse(localStorage.getItem("municipality-dismissed-deadlines") || "[]")),
+    [searchOpen, setSearchOpen] = useState(false),
     [q, setQ] = useState("");
   const { notifications, user, mail } = useStore();
   const navigate = useNavigate(),
@@ -172,12 +183,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
       mailId: m.id,
       virtual: true,
     }));
-  const visibleNotifications = [...deadlineAlerts, ...notifications];
+  const visibleDeadlineAlerts = deadlineAlerts.filter((n) => !dismissedDue.includes(n.id));
+  const visibleNotifications = [...visibleDeadlineAlerts, ...notifications];
   const unread = visibleNotifications.filter((n) => !n.read).length;
+  const isUrgentNotification = (n: (typeof visibleNotifications)[number]) => n.title.includes("متجاوزة") || n.title.includes("اليوم") || n.title.includes("عاجل") || n.details.includes("متأخرة");
+  const filteredNotifications = visibleNotifications.filter((n) => notificationFilter === "all" || (notificationFilter === "urgent" && isUrgentNotification(n)) || (notificationFilter === "unread" && !n.read));
+  const notificationGroups=([['اليوم',filteredNotifications.filter(n=>n.time!=='أمس'&&!n.time.includes('يومين')&&!n.time.includes('أسبوع'))],['أمس',filteredNotifications.filter(n=>n.time==='أمس')],['أقدم',filteredNotifications.filter(n=>n.time!=='أمس'&&(n.time.includes('يومين')||n.time.includes('أسبوع')))]] as const).filter(([,items])=>items.length);
+  const markAllNotifications = () => {
+    notifications.filter((n) => !n.read).forEach((n) => useStore.getState().markNotification(n.id));
+    const ids = deadlineAlerts.map((n) => n.id);
+    setDismissedDue(ids);
+    localStorage.setItem("municipality-dismissed-deadlines", JSON.stringify(ids));
+  };
   const search = (e: React.FormEvent) => {
     e.preventDefault();
     if (q.trim()) navigate(`/app/inbox?q=${encodeURIComponent(q)}`);
   };
+  const accessibleMail = user.role === "موظف"
+    ? mail.filter((m) => m.employee === user.name || m.department === user.department || m.copies?.includes(user.name) || m.copies?.includes(user.department))
+    : mail;
+  const quickResults = q.trim().length < 2 ? [] : accessibleMail.filter((m) =>
+    [m.number, m.subject, m.from, m.to, m.department, m.employee, m.keywords || ""].some((value) => value?.toLowerCase().includes(q.trim().toLowerCase())),
+  ).slice(0, 6);
   return (
     <div className={`shell ${collapsed ? "sidebar-collapsed" : ""}`}>
       <aside className={`${side ? "sidebar open" : "sidebar"} ${collapsed ? "collapsed" : ""}`}>
@@ -216,13 +243,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <small>نظام بلدية المغازي المؤسسي</small>
             </div>
           </div>
-          <form className="global-search" onSubmit={search}>
+          <form className="global-search" onSubmit={search} onFocus={() => setSearchOpen(true)} onBlur={() => setTimeout(() => setSearchOpen(false), 160)}>
             <Search />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="ابحث برقم الكتاب أو الموضوع أو الجهة..."
             />
+            {searchOpen && q.trim().length >= 2 && <div className="quick-search-results">
+              <div className="quick-search-head"><b>نتائج سريعة</b><span>{quickResults.length} نتائج</span></div>
+              {quickResults.map((m) => <button type="button" key={m.id} onClick={() => { navigate(`/app/mail/${m.id}`); setQ(""); setSearchOpen(false); }}><i>{m.type === "incoming" ? "و" : m.type === "outgoing" ? "ص" : "د"}</i><div><b>{m.subject}</b><span>{m.number} · {m.type === "outgoing" ? m.to : m.from}</span></div><small>{m.status}</small></button>)}
+              {!quickResults.length && <div className="quick-search-empty"><Search/><b>لا توجد نتائج مطابقة</b><span>جرّبي رقم الكتاب أو اسم الجهة.</span></div>}
+              <button type="submit" className="quick-search-all">فتح نتائج البحث الكاملة</button>
+            </div>}
           </form>
           <button className="icon notify" onClick={() => setNotes(!notes)}>
             <Bell />
@@ -231,25 +264,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <ProfileMenu />
           {notes && (
             <div className="notification-pop">
-              <h3>
-                الإشعارات <span>{unread} جديد</span>
-              </h3>
-              {visibleNotifications.map((n) => (
+              <div className="notification-head"><div><h3>مركز الإشعارات</h3><span>{unread} غير مقروء</span></div><button onClick={markAllNotifications} disabled={!unread}><CheckCheck/> تعليم الكل كمقروء</button></div>
+              <div className="notification-summary"><span className="urgent"><AlertTriangle/>{visibleNotifications.filter(isUrgentNotification).length} عاجلة</span><span><Clock3/>{visibleDeadlineAlerts.length} مرتبطة بموعد</span></div>
+              <div className="notification-filters">{([['all','الكل'],['urgent','العاجلة'],['unread','غير المقروء']] as const).map(([value,title])=><button className={notificationFilter===value?'active':''} onClick={()=>setNotificationFilter(value)} key={value}>{title}</button>)}</div>
+              <div className="notification-list">
+              {notificationGroups.map(([group,items])=><section className="notification-day-group" key={group}><h4>{group}<span>{items.length}</span></h4>{items.map((n) => (
                 <button
                   key={n.id}
-                  className={!n.read ? "unread" : ""}
+                  className={`${!n.read ? "unread " : ""}${isUrgentNotification(n) ? "urgent" : "normal"}`}
                   onClick={() => {
-                    if (!("virtual" in n))
+                    if ("virtual" in n) {
+                      const next=[...new Set([...dismissedDue,n.id])];
+                      setDismissedDue(next);
+                      localStorage.setItem("municipality-dismissed-deadlines",JSON.stringify(next));
+                    } else
                       useStore.getState().markNotification(n.id);
                     if (n.mailId) navigate(`/app/mail/${n.mailId}`);
                     setNotes(false);
                   }}
                 >
-                  <b>{n.title}</b>
-                  <span>{n.details}</span>
-                  <small>{n.time}</small>
+                  <i>{isUrgentNotification(n)?<AlertTriangle/>:<Bell/>}</i><div><b>{n.title}</b><span>{n.details}</span><small>{n.time}</small></div>
                 </button>
-              ))}
+              ))}</section>)}
+              {!filteredNotifications.length&&<div className="notification-empty"><CheckCheck/><b>لا توجد إشعارات ضمن هذا التصنيف</b><span>أنت على اطلاع بكل المستجدات.</span></div>}
+              </div>
             </div>
           )}
         </header>
@@ -262,7 +300,7 @@ export function PageHead({
   title,
   subtitle,
   action,
-  to = "/app/compose/app/outgoing",
+  to = "/app/compose/outgoing",
   onAction,
 }: {
   title: string;
@@ -289,7 +327,8 @@ export function PageHead({
 }
 export const Status = ({ children }: { children: React.ReactNode }) => (
   <span className={`status s-${String(children).replaceAll(" ", "-")}`}>
-    {children}
+    {(() => {const value=String(children);if(value.includes("متأخر")||value.includes("مرفوض")||value.includes("ملغ"))return <AlertTriangle aria-hidden="true"/>;if(value.includes("تم ")||value.includes("مكتمل")||value.includes("مؤرشف")||value.includes("معتمد")||value.includes("مغلقة"))return <CheckCheck aria-hidden="true"/>;if(value.includes("انتظار")||value.includes("مسودة")||value.includes("قيد"))return <Clock3 aria-hidden="true"/>;return <RefreshCw aria-hidden="true"/>})()}
+    <span>{children}</span>
   </span>
 );
 export function deadlineState(date?: string, status?: string) {

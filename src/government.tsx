@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
+  AlertTriangle,
   ArrowLeftRight,
+  BadgeCheck,
   Ban,
   Camera,
   CalendarClock,
@@ -20,6 +22,7 @@ import {
   Paperclip,
   Plus,
   Printer,
+  QrCode,
   Redo2,
   Reply,
   RotateCcw,
@@ -33,7 +36,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { Back, Empty, Field, Modal, PageHead, Status } from "./components";
+import { Back, deadlineState, Empty, Field, Modal, PageHead, Status } from "./components";
 import { departmentNames } from "./data";
 import { getDirectoryEntities, getDistributionGroups } from "./directory";
 import { canViewMail } from "./security";
@@ -95,7 +98,8 @@ export function GovernmentCompose() {
       return null;
     }
   }, []);
-  const all = useStore((s) => s.mail),
+  const currentUser = useStore((s) => s.user),
+    all = useStore((s) => s.mail),
     add = useStore((s) => s.addMail),
     navigate = useNavigate();
   const directoryEntities = useMemo(
@@ -142,6 +146,10 @@ export function GovernmentCompose() {
       name: file.name || `صورة-${new Date().toLocaleTimeString('ar-PS')}.jpg`,
       size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.ceil(file.size / 1024))} KB`,
       url: URL.createObjectURL(file),
+      mimeType: file.type || "ملف",
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: currentUser.name,
+      version: 1,
     }));
     if (next.length) setAttachments((current) => [...current, ...next]);
   };
@@ -156,7 +164,11 @@ export function GovernmentCompose() {
     priority: "عادي" as Priority,
     correspondenceKind: (selectedTemplate?.category === "تعاميم"
       ? "تعميم"
-      : "مراسلة داخلية") as CorrespondenceKind,
+      : mailType === "incoming"
+        ? "كتاب وارد"
+        : mailType === "outgoing"
+          ? "كتاب صادر"
+          : "مراسلة داخلية") as CorrespondenceKind,
     confidentiality: "داخلي" as Confidentiality,
     requiresReply: false,
     dueDate: "",
@@ -348,6 +360,7 @@ export function GovernmentCompose() {
                   }
                 >
                   <option>عادي</option>
+                  <option>مهم</option>
                   <option>عاجل</option>
                   <option>عاجل جداً</option>
                 </select>
@@ -373,14 +386,12 @@ export function GovernmentCompose() {
                     })
                   }
                 >
-                  {[
-                    "مراسلة داخلية",
-                    "مذكرة داخلية",
-                    "إحالة",
-                    "تعميم",
-                    "نسخة للعلم",
-                    "طلب إجراء",
-                  ].map((x) => (
+                  {(mailType === "incoming"
+                    ? ["كتاب وارد", "إحالة", "نسخة للعلم", "طلب إجراء"]
+                    : mailType === "outgoing"
+                      ? ["كتاب صادر", "نسخة للعلم", "طلب إجراء"]
+                      : ["مراسلة داخلية", "مذكرة داخلية", "إحالة", "تعميم", "نسخة للعلم", "طلب إجراء"]
+                  ).map((x) => (
                     <option key={x}>{x}</option>
                   ))}
                 </select>
@@ -629,7 +640,8 @@ export function GovernmentCompose() {
                   <FileText />
                   <div>
                     <b>{a.name}</b>
-                    <small>{a.size}</small>
+                    <small>{a.size} · إصدار {a.version||1}</small>
+                    <small>{a.uploadedBy?`أضيف بواسطة ${a.uploadedBy}`:"مرفق أصلي"}{a.uploadedAt?` · ${new Date(a.uploadedAt).toLocaleString("ar-PS")}`:""}</small>
                   </div>
                   <button
                     onClick={() =>
@@ -854,6 +866,13 @@ export function GovernmentDetails() {
     [note, setNote] = useState(""),
     [target, setTarget] = useState(""),
     [action, setAction] = useState("للمتابعة"),
+    [transferEmployee, setTransferEmployee] = useState(""),
+    [transferDue, setTransferDue] = useState(""),
+    [transferPriority, setTransferPriority] = useState<Priority>("عادي"),
+    [transferNote, setTransferNote] = useState(""),
+    [transferReplyRequired, setTransferReplyRequired] = useState(false),
+    [transferInfoOnly, setTransferInfoOnly] = useState(false),
+    [customTransferAction, setCustomTransferAction] = useState(""),
     [showTransfer, setShowTransfer] = useState(false),
     [showExtension, setShowExtension] = useState(false),
     [showCopy, setShowCopy] = useState(false),
@@ -861,6 +880,9 @@ export function GovernmentDetails() {
     [showReply, setShowReply] = useState(false),
     [showClose, setShowClose] = useState(false),
     [showArchiveForm, setShowArchiveForm] = useState(false),
+    [showOfficialPreview, setShowOfficialPreview] = useState(false),
+    [timelineFilter, setTimelineFilter] = useState<"all"|"referrals"|"replies"|"approvals"|"system">("all"),
+    [detailTab, setDetailTab] = useState<"overview"|"replies"|"delivery">("overview"),
     [copyTarget, setCopyTarget] = useState(""),
     [newDue, setNewDue] = useState(""),
     [replySubject, setReplySubject] = useState(""),
@@ -872,6 +894,7 @@ export function GovernmentDetails() {
     [archiveCode, setArchiveCode] = useState(""),
     [archiveKeywords, setArchiveKeywords] = useState(""),
     [actionError, setActionError] = useState(""),
+    [correctionError, setCorrectionError] = useState(""),
     [actionReason, setActionReason] = useState(""),
     [pendingAction, setPendingAction] = useState<null | { status: string; label: string; field: "rejectionReason" | "cancellationReason" | "reopenReason" }>(null),
     [correction, setCorrection] = useState({
@@ -972,6 +995,10 @@ export function GovernmentDetails() {
       name: file.name || `صورة-${new Date().toLocaleTimeString('ar-PS')}.jpg`,
       size: file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.ceil(file.size / 1024))} KB`,
       url: URL.createObjectURL(file),
+      mimeType: file.type || "ملف",
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: user.name,
+      version: 1,
     }));
     if (added.length) update(selected.id, { attachments: [...selected.attachments, ...added] }, source === 'camera' ? 'إرفاق صور من كاميرا الجوال' : 'إضافة مرفقات');
   };
@@ -1046,6 +1073,7 @@ export function GovernmentDetails() {
     setPendingAction(null);
   };
   const openCorrection = () => {
+    setCorrectionError("");
     setCorrection({
       subject: selected.subject,
       body: selected.body || "",
@@ -1054,8 +1082,8 @@ export function GovernmentDetails() {
     setShowCorrection(true);
   };
   const saveCorrection = () => {
-    if (!correction.reason.trim()) return alert("سبب التصحيح إلزامي");
-    if (!correction.subject.trim()) return alert("عنوان المراسلة مطلوب");
+    if (!correction.reason.trim()) return setCorrectionError("سبب التصحيح إلزامي.");
+    if (!correction.subject.trim()) return setCorrectionError("عنوان المراسلة مطلوب.");
     const time = new Date().toISOString(),
       originalSnapshot = selected.originalSnapshot || {
         subject: selected.subject,
@@ -1087,12 +1115,74 @@ export function GovernmentDetails() {
     );
     setShowCorrection(false);
   };
+  const commandStages = ["التسجيل", "التدقيق", "الاعتماد", "التنفيذ", "الإغلاق"];
+  const isClosed = Boolean(selected.archived || ["مؤرشف", "مغلقة", "تم الإنجاز"].includes(selected.status));
+  const commandStage = isClosed
+    ? 4
+    : selected.status === "بانتظار الاعتماد"
+      ? 2
+      : selected.status === "بانتظار التدقيق"
+        ? 1
+        : ["مسودة", "جديد"].includes(selected.status)
+          ? 0
+          : 3;
+  const commandProgress = (commandStage + 1) * 20;
+  const dueState = deadlineState(selected.dueDate, selected.status);
+  const dueLabel = !selected.dueDate
+    ? "دون موعد محدد"
+    : dueState === "overdue"
+      ? `متأخرة منذ ${Math.max(1, Math.ceil((Date.now() - new Date(`${selected.dueDate}T00:00:00`).getTime()) / 86400000))} يوم`
+      : dueState === "today"
+        ? "مستحقة اليوم"
+        : `موعدها ${selected.dueDate}`;
+  const nextAction = isClosed
+    ? "مراجعة سجل الأرشفة"
+    : selected.status === "بانتظار التدقيق"
+      ? "إتمام التدقيق"
+      : selected.status === "بانتظار الاعتماد"
+        ? "اعتماد المراسلة"
+        : selected.status === "معاد للتعديل"
+          ? "إصدار نسخة مصححة"
+          : "تحويلها للجهة المختصة";
+  const standardDays = selected.priority === "عاجل جداً" ? 1 : selected.priority === "عاجل" ? 3 : 5;
+  const consumedDays = Math.max(0, Math.ceil((Date.now() - new Date(`${selected.date}T08:00:00`).getTime()) / 86400000));
+  const remainingSla = standardDays - consumedDays;
+  const ownerSince = selected.workflow.length ? selected.workflow[selected.workflow.length - 1].time : selected.sentAt || `${selected.date}T08:00:00`;
+  const ownerHours = Math.max(1, Math.floor((Date.now() - new Date(ownerSince).getTime()) / 3600000));
+  const filteredThreadEvents = threadEvents.filter((event) => timelineFilter === "all" || (timelineFilter === "referrals" && ["إحالة", "نسخة"].includes(event.kind)) || (timelineFilter === "replies" && ["رد", "ملاحظة"].includes(event.kind)) || (timelineFilter === "approvals" && (event.title.includes("اعتماد") || event.title.includes("تدقيق"))) || (timelineFilter === "system" && ["إنشاء", "إجراء"].includes(event.kind)));
+  const deliveryRecipients = selected.recipients?.length ? selected.recipients.map((recipient, index) => ({name:recipient.name,status:index===0&&selected.viewedAt?'تم الاطلاع':index<2?'تم الاستلام':'قيد الانتظار',time:index===0&&selected.viewedAt?new Date(selected.viewedAt).toLocaleTimeString('ar-PS',{hour:'2-digit',minute:'2-digit'}):index<2?'09:17':'—'})) : [{name:selected.to,status:selected.viewedAt?'تم الاطلاع':selected.sentAt?'تم الاستلام':'قيد الانتظار',time:selected.viewedAt?new Date(selected.viewedAt).toLocaleTimeString('ar-PS',{hour:'2-digit',minute:'2-digit'}):selected.sentAt?'09:17':'—'}];
+  const runNextAction = () => {
+    if (isClosed) return navigate("/app/archive");
+    if (["بانتظار التدقيق", "بانتظار الاعتماد"].includes(selected.status)) return navigate("/app/approvals");
+    if (selected.status === "معاد للتعديل") return openCorrection();
+    setShowTransfer(true);
+  };
   return (
     <div className="compact-mail-details">
       <PageHead
         title={`تفاصيل المراسلة ${selected.number}`}
         subtitle="عرض الكتاب وسجل التحويلات والإجراءات التشغيلية في مساحة واحدة"
       />
+      <section className="panel transaction-command-center">
+        <div className="command-center-head">
+          <div><small>مركز قيادة المعاملة</small><h2>{selected.subject}</h2><p>{selected.number} · {selected.from} ← {selected.to}</p></div>
+          <div className={`command-health ${dueState}`}><CalendarClock/><span><small>حالة الموعد</small><b>{dueLabel}</b></span></div>
+        </div>
+        <div className="command-stage-track" style={{"--command-progress": `${commandProgress}%`} as CSSProperties}>
+          {commandStages.map((stage, index) => <div className={index < commandStage ? "done" : index === commandStage ? "current" : ""} key={stage}><i>{index < commandStage ? <Check/> : index + 1}</i><span>{stage}</span></div>)}
+        </div>
+        <div className="command-center-foot">
+          <div><UserPlus/><span><small>المسؤول الحالي</small><b>{selected.employee || selected.department || "غير محدد"}</b><small>منذ {ownerHours < 24 ? `${ownerHours} ساعة` : `${Math.floor(ownerHours / 24)} يوم`}</small></span></div>
+          <div><Clock3/><span><small>المرحلة الحالية</small><b>{commandStages[commandStage]} · {selected.status}</b></span></div>
+          <div className="command-next"><span><small>الخطوة المقترحة</small><b>{nextAction}</b></span><button onClick={runNextAction}>{nextAction}<ArrowLeftRight/></button></div>
+        </div>
+      </section>
+      <section className="panel sla-overview">
+        <div><CalendarClock/><span><small>المدة المعيارية للإنجاز</small><b>{standardDays} أيام عمل</b></span></div>
+        <div><Clock3/><span><small>المدة المستهلكة</small><b>{consumedDays} أيام</b></span></div>
+        <div className={remainingSla < 0 ? "late" : "remaining"}><AlertTriangle/><span><small>{remainingSla < 0 ? "تجاوز المدة المعيارية" : "الوقت المتبقي"}</small><b>{remainingSla < 0 ? `${Math.abs(remainingSla)} يوم` : `${remainingSla} أيام`}</b></span></div>
+        <progress max={standardDays} value={Math.min(consumedDays, standardDays)} />
+      </section>
       <section className="panel lifecycle-strip">
         <div>
           <small>نوع المراسلة</small>
@@ -1138,16 +1228,31 @@ export function GovernmentDetails() {
           </button>
         </div>
       </section>
-      <details className="panel correspondence-thread">
+      <div className="detail-content-tabs">
+        <button className={detailTab==='overview'?'active':''} onClick={()=>setDetailTab('overview')}>نظرة عامة</button>
+        <button className={detailTab==='replies'?'active':''} onClick={()=>setDetailTab('replies')}>الردود <b>{selected.replies?.length||0}</b></button>
+        <button className={detailTab==='delivery'?'active':''} onClick={()=>setDetailTab('delivery')}>حالة المستلمين <b>{deliveryRecipients.length}</b></button>
+      </div>
+      {detailTab==='replies'&&<section className="panel replies-thread-panel">
+        <div className="panel-head"><div><h2>سلسلة الردود</h2><p>جميع الردود المرتبطة بالمراسلة الأصلية ضمن محادثة واحدة.</p></div><button className="primary" onClick={openReply}><Reply/> إضافة رد</button></div>
+        <div className="replies-conversation">{selected.replies?.length?selected.replies.map((reply)=><article key={reply.id}><i>{reply.author.slice(0,1)}</i><div><header><b>{reply.author}</b><span>{new Date(reply.time).toLocaleString('ar-PS')}</span></header><p>{reply.text}</p>{reply.attachments?.length?<footer><Paperclip/>{reply.attachments.map(file=><span key={file.id}>{file.name} · {file.size}</span>)}</footer>:null}</div><Status>تم الإرسال</Status></article>):<div className="reply-empty"><Reply/><b>لا توجد ردود حتى الآن</b><span>يمكن إضافة رد رسمي أو حفظه كمسودة.</span><button onClick={openReply}>إنشاء أول رد</button></div>}</div>
+      </section>}
+      {detailTab==='delivery'&&<section className="panel recipients-status-panel">
+        <div className="panel-head"><div><h2>حالة الإرسال والاستلام</h2><p>متابعة وصول المراسلة واطلاع الجهات المستلمة عليها.</p></div><span>{deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length} من {deliveryRecipients.length} اطلعوا</span></div>
+        <div className="delivery-progress"><progress max={deliveryRecipients.length} value={deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length}/><b>{Math.round(deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length/deliveryRecipients.length*100)}%</b></div>
+        <div className="recipient-status-list">{deliveryRecipients.map((recipient,index)=><article key={`${recipient.name}-${index}`}><i className={recipient.status==='تم الاطلاع'?'seen':recipient.status==='تم الاستلام'?'received':'waiting'}>{recipient.status==='تم الاطلاع'?<Eye/>:recipient.status==='تم الاستلام'?<Check/>:<Clock3/>}</i><div><b>{recipient.name}</b><span>{recipient.status}</span></div><time>{recipient.time}</time></article>)}</div>
+      </section>}
+      <details className="panel correspondence-thread" open>
         <summary className="panel-head">
           <div>
             <h2>السلسلة الزمنية الكاملة</h2>
             <p>الأصل والإحالات والنسخ والردود والإجراءات ضمن سجل مترابط واحد</p>
           </div>
-          <b>{threadEvents.length} أحداث</b>
+          <b>{filteredThreadEvents.length} أحداث</b>
         </summary>
+        <div className="timeline-filters">{([['all','الكل'],['referrals','الإحالات'],['replies','الردود'],['approvals','الاعتمادات'],['system','النظام']] as const).map(([value,title])=><button className={timelineFilter===value?'active':''} onClick={()=>setTimelineFilter(value)} key={value}>{title}</button>)}</div>
         <div className="thread-flow">
-          {threadEvents.map((e) => (
+          {filteredThreadEvents.map((e) => (
             <article key={e.id} className={`thread-${e.kind}`}>
               <i />
               <time>{new Date(e.time).toLocaleString("ar-PS")}</time>
@@ -1158,6 +1263,7 @@ export function GovernmentDetails() {
               </div>
             </article>
           ))}
+          {!filteredThreadEvents.length&&<div className="timeline-empty">لا توجد أحداث ضمن هذا التصنيف.</div>}
         </div>
       </details>
       <div className="tri-workspace">
@@ -1198,6 +1304,7 @@ export function GovernmentDetails() {
               </p>
             </div>
             <div>
+              <button className="secondary official-preview-trigger" onClick={()=>{recordAudit("معاينة كتاب رسمي",`معاينة النسخة الرسمية ${selected.subject}`,selected.number);setShowOfficialPreview(true)}}><FileText/> معاينة رسمية</button>
               {["جديد", "مسودة", "معاد للتعديل"].includes(selected.status) && (
                 <button
                   className="primary"
@@ -1464,6 +1571,18 @@ export function GovernmentDetails() {
           </div>
         </aside>
       </div>
+      {showOfficialPreview && (
+        <Modal title="معاينة النسخة الرسمية" onClose={()=>setShowOfficialPreview(false)}>
+          <article className="official-document-preview" dir="rtl">
+            <header><div className="official-logo">م</div><div><b>بلدية المغازي</b><span>نظام المراسلات والأرشيف الإلكتروني</span></div><aside><small>رقم الكتاب</small><strong>{selected.number}</strong><small>التاريخ: {selected.date}</small></aside></header>
+            <div className="official-parties"><p>إلى: <b>{selected.to}</b></p><p>من: <b>{selected.from}</b></p><p>الموضوع: <b>{selected.subject}</b></p></div>
+            <div className="official-letter-body">{selected.body||"لا يوجد نص تفصيلي مسجل لهذه المراسلة."}</div>
+            <footer><div><b>الاعتماد الإلكتروني</b><span>{selected.employee||user.name}</span><small>نسخة إلكترونية موثقة — الإصدار {1+(selected.versions?.length||0)}</small></div><div className="verification-code"><div className="fake-qr" aria-label="رمز تحقق إلكتروني"><QrCode/></div><span>رمز التحقق</span><b>{`MUN-${selected.id}-${selected.date.replaceAll('-','')}`}</b></div></footer>
+          </article>
+          <p className="verification-note"><ShieldCheck/> يمكن مطابقة رقم الكتاب ورمز التحقق مع سجل المراسلة الإلكتروني. الربط العام للرمز يُفعّل عند توصيل الخادم.</p>
+          <div className="actions"><button className="secondary" onClick={()=>setShowOfficialPreview(false)}>إغلاق</button><button className="secondary" onClick={()=>navigate(`/verify/${selected.id}`)}><QrCode/> فتح صفحة التحقق</button><button className="primary" onClick={()=>window.print()}><Printer/> طباعة / حفظ PDF</button></div>
+        </Modal>
+      )}
       {pendingAction && (
         <Modal title={pendingAction.label} onClose={() => setPendingAction(null)}>
           <p className="copy-information-note">سيتم تسجيل هذا القرار وسببه ضمن سجل العمليات والسلسلة الزمنية للمراسلة.</p>
@@ -1552,7 +1671,7 @@ export function GovernmentDetails() {
               <input
                 value={correction.subject}
                 onChange={(e) =>
-                  setCorrection({ ...correction, subject: e.target.value })
+                  (setCorrection({ ...correction, subject: e.target.value }),setCorrectionError(""))
                 }
               />
             </Field>
@@ -1569,12 +1688,13 @@ export function GovernmentDetails() {
               <textarea
                 value={correction.reason}
                 onChange={(e) =>
-                  setCorrection({ ...correction, reason: e.target.value })
+                  (setCorrection({ ...correction, reason: e.target.value }),setCorrectionError(""))
                 }
                 placeholder="مثال: تصحيح رقم الكتاب أو اسم الجهة..."
               />
             </Field>
           </div>
+          {correctionError && <p className="form-error">{correctionError}</p>}
           <div className="actions">
             <button
               className="secondary"
@@ -1590,7 +1710,8 @@ export function GovernmentDetails() {
       )}
       {showTransfer && (
         <Modal title="تحويل المراسلة" onClose={() => setShowTransfer(false)}>
-          <div className="form-grid one">
+          <p className="copy-information-note">تُسجّل الإحالة في المسار الزمني وتنتقل المسؤولية إلى الجهة المحددة، إلا إذا كانت للعلم فقط.</p>
+          <div className="form-grid referral-form-grid">
             <Field label="الجهة أو القسم">
               <select
                 value={target}
@@ -1602,6 +1723,9 @@ export function GovernmentDetails() {
                 ))}
               </select>
             </Field>
+            <Field label="الموظف / المسؤول">
+              <select value={transferEmployee} onChange={(e)=>setTransferEmployee(e.target.value)}><option value="">يُحدد من الجهة</option>{employees.map(employee=><option key={employee}>{employee}</option>)}</select>
+            </Field>
             <Field label="الإجراء المطلوب">
               <select
                 value={action}
@@ -1610,9 +1734,15 @@ export function GovernmentDetails() {
                 {actions.map((x) => (
                   <option key={x}>{x}</option>
                 ))}
+                <option>مخصص</option>
               </select>
             </Field>
+            {action==='مخصص'&&<Field label="الإجراء المخصص"><input value={customTransferAction} onChange={e=>setCustomTransferAction(e.target.value)} placeholder="اكتب المطلوب من الجهة بوضوح"/></Field>}
+            <Field label="درجة الأولوية"><select value={transferPriority} onChange={e=>setTransferPriority(e.target.value as Priority)}><option>عادي</option><option>مهم</option><option>عاجل</option><option>عاجل جداً</option></select></Field>
+            <Field label="تاريخ الاستحقاق"><input type="date" value={transferDue} onChange={e=>setTransferDue(e.target.value)}/></Field>
+            <Field label="ملاحظة الإحالة" wide><textarea rows={3} value={transferNote} onChange={e=>setTransferNote(e.target.value)} placeholder="تعليمات أو توضيحات للجهة المستلمة..."/></Field>
           </div>
+          <div className="referral-options"><label><input type="checkbox" checked={transferReplyRequired} onChange={e=>setTransferReplyRequired(e.target.checked)}/> يتطلب ردًا</label><label><input type="checkbox" checked={transferInfoOnly} onChange={e=>setTransferInfoOnly(e.target.checked)}/> للعلم فقط ولا تنقل المسؤولية</label></div>
           <div className="actions">
             <button
               className="secondary"
@@ -1624,14 +1754,20 @@ export function GovernmentDetails() {
               className="primary"
               onClick={() => {
                 if (target) {
-                  transfer(selected.id, target, action, "");
+                  const requestedAction=transferInfoOnly?'للعلم':action==='مخصص'?customTransferAction.trim():action;
+                  if(!requestedAction)return setActionError('اكتب الإجراء المخصص قبل الإرسال.');
+                  if(transferInfoOnly) update(selected.id,{copies:[...new Set([...(selected.copies||[]),target])],workflow:[...selected.workflow,{id:crypto.randomUUID(),from:selected.department||'الديوان',to:target,action:'نسخة للعلم',note:transferNote,time:new Date().toISOString(),status:'مغلق'}]},'إرسال نسخة للعلم');
+                  else transfer(selected.id, target, requestedAction, transferNote);
+                  update(selected.id,{employee:transferInfoOnly?selected.employee:transferEmployee,dueDate:transferDue||selected.dueDate,priority:transferPriority,requiresReply:transferReplyRequired||selected.requiresReply,requiresClosure:transferReplyRequired||selected.requiresClosure},'تحديث بيانات الإحالة');
                   setShowTransfer(false);
+                  setTransferNote("");setCustomTransferAction("");setActionError("");
                 }
               }}
             >
               إرسال التحويل
             </button>
           </div>
+          {actionError&&<p className="form-error">{actionError}</p>}
         </Modal>
       )}
       {showExtension && (
@@ -1727,4 +1863,9 @@ export function GovernmentDetails() {
       )}
     </div>
   );
+}
+
+export function CorrespondenceVerification(){
+  const {id=""}=useParams(),navigate=useNavigate(),mail=useStore(s=>s.mail),record=mail.find(m=>m.id===id);
+  return <main className="verification-page" dir="rtl"><section className="verification-card"><header><div className="official-logo">م</div><div><small>بلدية المغازي</small><h1>التحقق من المراسلة</h1><p>خدمة تحقق تصورية للنسخة الإلكترونية</p></div></header>{record?<><div className="verification-success"><BadgeCheck/><span><b>الوثيقة مسجلة وصحيحة</b><small>تم العثور على مرجع مطابق في سجل المراسلات.</small></span></div><dl><div><dt>رقم الكتاب</dt><dd>{record.number}</dd></div><div><dt>تاريخ الإصدار</dt><dd>{record.date}</dd></div><div><dt>الجهة المصدرة</dt><dd>{record.from}</dd></div><div><dt>حالة الوثيقة</dt><dd>{record.archived?"مؤرشفة":record.status}</dd></div><div><dt>رقم الإصدار</dt><dd>{1+(record.versions?.length||0)}</dd></div><div><dt>رمز التحقق</dt><dd>{`MUN-${record.id}-${record.date.replaceAll('-','')}`}</dd></div></dl><p className="verification-privacy"><ShieldCheck/> حفاظًا على الخصوصية لا تعرض هذه الصفحة نص الكتاب أو أسماء المستلمين أو المرفقات.</p></>:<div className="verification-missing"><XCircle/><h2>تعذر التحقق من الوثيقة</h2><p>رقم المرجع غير موجود في البيانات الحالية.</p></div>}<footer><button className="secondary" onClick={()=>navigate(-1)}>رجوع</button><button className="primary" onClick={()=>navigate("/app/dashboard")}>العودة للنظام</button></footer></section></main>
 }

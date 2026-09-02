@@ -29,3 +29,11 @@
 :root[data-theme="dark"] .notification-pop>button b{color:#fff;font-size:15px}
 :root[data-theme="dark"] .notification-pop>button span{color:#c8d0dc}
 :root[data-theme="dark"] .notification-pop>button small{color:#929dad;margin-top:4px}
+:root[data-theme="dark"] .notification-summary{background:#242b35}
+:root[data-theme="dark"] .notification-filters button.active{background:#47272d;color:#ffb7bb}
+:root[data-theme="dark"] .notification-list>button{background:#242b35;color:#eef1f5;border-color:#343d49}
+:root[data-theme="dark"] .notification-list>button.unread{background:#3a2227;border-color:#703038}
+:root[data-theme="dark"] .notification-list>button>i{background:#303946;color:#d7deea}
+:root[data-theme="dark"] .quick-search-results{background:#1c222b;border-color:#3a4451;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+:root[data-theme="dark"] .quick-search-results>button:not(.quick-search-all):hover{background:#3a2227}
+:root[data-theme="dark"] .quick-search-all{background:#47272d;color:#ffb7bb}
