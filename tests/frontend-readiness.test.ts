@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { canAccessPath } from '../src/access';
 import { getCompletionRate, getDashboardStatistics, getPeriodRange } from '../src/dashboard-stats';
 import { seedMail } from '../src/data';
+import { isFinalMailStatus, MAIL_STATUSES, normalizeMailStatus } from '../src/mailStatuses';
+import { deadlineState } from '../src/components';
 
 describe('جاهزية واجهة النظام', () => {
   it('يفصل صلاحيات الموظف العادي عن مسؤول الديوان', () => {
@@ -26,5 +28,23 @@ describe('جاهزية واجهة النظام', () => {
   it('يحتوي إعداد Vercel على إعادة كتابة لمسارات React', () => {
     const config = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'vercel.json'), 'utf8'));
     expect(config.rewrites).toContainEqual({ source: '/(.*)', destination: '/index.html' });
+  });
+
+  it('يوحد جميع الحالات القديمة ويحمي الحالات النهائية من تنبيهات التأخير', () => {
+    expect(normalizeMailStatus('تم الإنجاز')).toBe(MAIL_STATUSES.COMPLETED);
+    expect(normalizeMailStatus('مؤرشف')).toBe(MAIL_STATUSES.ARCHIVED);
+    expect(normalizeMailStatus('ملغي')).toBe(MAIL_STATUSES.CANCELLED);
+    expect(normalizeMailStatus('تم التحويل')).toBe(MAIL_STATUSES.REFERRED);
+    expect(normalizeMailStatus('قيد المعالجة')).toBe(MAIL_STATUSES.IN_PROGRESS);
+    expect(normalizeMailStatus('معاد للتعديل')).toBe(MAIL_STATUSES.RETURNED);
+    [MAIL_STATUSES.COMPLETED, MAIL_STATUSES.CLOSED, MAIL_STATUSES.ARCHIVED, MAIL_STATUSES.CANCELLED, MAIL_STATUSES.REJECTED].forEach(status => {
+      expect(isFinalMailStatus(status)).toBe(true);
+      expect(deadlineState('2020-01-01', status)).toBe('done');
+    });
+  });
+
+  it('يغطي المرجع الموحد جميع حالات المراسلات الخمس عشرة', () => {
+    expect(Object.values(MAIL_STATUSES)).toHaveLength(15);
+    expect(new Set(Object.values(MAIL_STATUSES)).size).toBe(15);
   });
 });

@@ -1,4 +1,5 @@
 import type { Mail } from './types';
+import { isFinalMailStatus, MAIL_STATUSES, normalizeMailStatus } from './mailStatuses';
 
 export type DashboardPeriod = 'today'|'7days'|'week'|'month'|'previousMonth'|'year'|'custom';
 export type AnalysisMode = 'daily'|'weekly'|'monthly';
@@ -6,8 +7,7 @@ export type DateRange = { from: string; to: string };
 const DAY = 86400000;
 const iso = (date:Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 const atStart = (value:string) => new Date(`${value}T00:00:00`);
-export const completedStatuses = ['تم الإنجاز','مغلقة','مؤرشف'];
-export const isCompleted = (mail:Mail) => completedStatuses.includes(mail.status) || Boolean(mail.archived);
+export const isCompleted = (mail:Mail) => isFinalMailStatus(mail.status) || Boolean(mail.archived);
 
 export function getPeriodRange(period:DashboardPeriod, custom?:DateRange, reference=new Date()):DateRange {
   const today=new Date(reference);today.setHours(0,0,0,0);
@@ -35,7 +35,8 @@ export const getCompletionRate=(mail:Mail[])=>mail.length?Math.round(mail.filter
 export function getDashboardStatistics(all:Mail[],range:DateRange) {
   const rows=all.filter(m=>inRange(m,range));
   const completed=rows.filter(isCompleted);
-  return {rows,total:rows.length,incoming:rows.filter(m=>m.type==='incoming').length,outgoing:rows.filter(m=>m.type==='outgoing').length,processing:rows.filter(m=>['قيد المعالجة','تم التحويل','بانتظار الرد','بانتظار التدقيق','بانتظار الاعتماد'].includes(m.status)).length,completed:completed.length,completionRate:getCompletionRate(rows)};
+  const activeStatuses=[MAIL_STATUSES.IN_PROGRESS,MAIL_STATUSES.REFERRED,MAIL_STATUSES.WAITING_REPLY,MAIL_STATUSES.PENDING_APPROVAL];
+  return {rows,total:rows.length,incoming:rows.filter(m=>m.type==='incoming').length,outgoing:rows.filter(m=>m.type==='outgoing').length,processing:rows.filter(m=>activeStatuses.includes(normalizeMailStatus(m.status) as typeof activeStatuses[number])).length,completed:completed.length,completionRate:getCompletionRate(rows)};
 }
 
 export function comparison(current:number,previous:number) {

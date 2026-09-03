@@ -4,19 +4,20 @@ import {useNavigate} from 'react-router-dom';
 import {Deadline,deadlineState,Empty,PageHead,Status} from './components';
 import {departmentNames} from './data';
 import {label,useStore} from './store';
+import {isFinalMailStatus,MAIL_STATUSES,normalizeMailStatus} from './mailStatuses';
 
 export function ReferralFollowup(){
   const mail=useStore(s=>s.mail),navigate=useNavigate();
   const [query,setQuery]=useState(''),[department,setDepartment]=useState(''),[state,setState]=useState('open');
-  const referrals=useMemo(()=>mail.filter(m=>m.workflow.length>0||['تم التحويل','قيد المعالجة','بانتظار الرد','متأخر'].includes(m.status)),[mail]);
-  const matchState=(m:typeof mail[number])=>state==='all'||(state==='late'&&deadlineState(m.dueDate,m.status)==='overdue')||(state==='waiting'&&m.status==='بانتظار الرد')||(state==='open'&&!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status))||(state==='done'&&['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status));
+  const referrals=useMemo(()=>mail.filter(m=>m.workflow.length>0||[MAIL_STATUSES.REFERRED,MAIL_STATUSES.IN_PROGRESS,MAIL_STATUSES.WAITING_REPLY,MAIL_STATUSES.OVERDUE].includes(normalizeMailStatus(m.status) as never)),[mail]);
+  const matchState=(m:typeof mail[number])=>state==='all'||(state==='late'&&deadlineState(m.dueDate,m.status)==='overdue')||(state==='waiting'&&normalizeMailStatus(m.status)===MAIL_STATUSES.WAITING_REPLY)||(state==='open'&&!isFinalMailStatus(m.status))||(state==='done'&&isFinalMailStatus(m.status));
   const rows=referrals.filter(m=>matchState(m)&&(!department||m.department===department)&&(!query||[m.number,m.subject,m.employee,m.department].some(v=>v.includes(query))));
   const exportFollowup=()=>{const quote=(value:string)=>`"${value.replaceAll('"','""')}"`;const lines=[['رقم المراسلة','الموضوع','المسؤول الحالي','الوحدة','الإجراء المطلوب','المهلة','الحالة'],...rows.map(m=>{const last=m.workflow.at(-1);return [m.number,m.subject,m.employee||m.department,m.department,last?.action||'متابعة المراسلة',m.dueDate||'دون مهلة',m.status]})];const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(line=>line.map(value=>quote(String(value))).join(',')).join('\n')],{type:'text/csv;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=`متابعة-الإحالات-${new Date().toISOString().slice(0,10)}.csv`;anchor.click();URL.revokeObjectURL(url)};
   const stats=[
-    ['إحالات مفتوحة',referrals.filter(m=>!['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,ArrowLeftRight,'open'],
+    ['إحالات مفتوحة',referrals.filter(m=>!isFinalMailStatus(m.status)).length,ArrowLeftRight,'open'],
     ['متجاوزة للمهلة',referrals.filter(m=>deadlineState(m.dueDate,m.status)==='overdue').length,Clock3,'late'],
-    ['بانتظار الرد',referrals.filter(m=>m.status==='بانتظار الرد').length,TimerReset,'waiting'],
-    ['مكتملة',referrals.filter(m=>['تم الإنجاز','مغلقة','مؤرشف'].includes(m.status)).length,CheckCircle2,'done']
+    ['بانتظار الرد',referrals.filter(m=>normalizeMailStatus(m.status)===MAIL_STATUSES.WAITING_REPLY).length,TimerReset,'waiting'],
+    ['مكتملة',referrals.filter(m=>isFinalMailStatus(m.status)).length,CheckCircle2,'done']
   ] as const;
   return <>
     <PageHead title="الإحالات والمتابعة" subtitle="متابعة المحال إليه والمطلوب وتاريخ الاستحقاق والمسؤول الحالي"/>
@@ -38,7 +39,7 @@ export function ReferralFollowup(){
 export function ArchiveCenter(){
   const mail=useStore(s=>s.mail),navigate=useNavigate();
   const [query,setQuery]=useState(''),[year,setYear]=useState(''),[kind,setKind]=useState(''),[security,setSecurity]=useState(''),[category,setCategory]=useState('');
-  const archived=mail.filter(m=>m.archived||m.status==='مؤرشف');
+  const archived=mail.filter(m=>m.archived||normalizeMailStatus(m.status)===MAIL_STATUSES.ARCHIVED);
   const rows=archived.filter(m=>(!query||[m.number,m.subject,m.from,m.to,m.keywords||''].some(v=>v.includes(query)))&&(!year||m.date.startsWith(year))&&(!kind||m.correspondenceKind===kind)&&(!security||(m.confidentiality||'داخلي')===security)&&(!category||m.archiveCategory===category));
   const categories=[...new Set(archived.map(m=>m.archiveCategory).filter(Boolean))];
   const exportResults=()=>{const quote=(value:string)=>`"${value.replaceAll('"','""')}"`;const lines=[['رقم المراسلة','الموضوع','التاريخ','الجهة','التصنيف','السرية','رمز الأرشيف'],...rows.map(m=>[m.number,m.subject,m.date,m.type==='outgoing'?m.to:m.from,m.archiveCategory||'عام',m.confidentiality||'داخلي',m.archiveCode||''])];const url=URL.createObjectURL(new Blob(['\ufeff'+lines.map(line=>line.map(value=>quote(String(value))).join(',')).join('\n')],{type:'text/csv;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=`نتائج-الأرشيف-${new Date().toISOString().slice(0,10)}.csv`;anchor.click();URL.revokeObjectURL(url)};

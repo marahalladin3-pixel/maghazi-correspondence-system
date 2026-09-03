@@ -41,6 +41,7 @@ import { departmentNames } from "./data";
 import { getDirectoryEntities, getDistributionGroups } from "./directory";
 import { canViewMail } from "./security";
 import { label, useStore } from "./store";
+import { isFinalMailStatus, isPendingReviewStatus, MAIL_STATUSES, normalizeMailStatus } from "./mailStatuses";
 import type {
   Attachment,
   Confidentiality,
@@ -141,6 +142,7 @@ export function GovernmentCompose() {
     [linkNumber, setLinkNumber] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [showSendReview, setShowSendReview] = useState(false);
+  const [isSending, setIsSending] = useState(false), sendLock = useRef(false);
   const appendAttachments = (files: FileList | null) => {
     const next = Array.from(files || []).map((file) => ({
       id: crypto.randomUUID(),
@@ -861,7 +863,7 @@ export function GovernmentCompose() {
           </div>
         </aside>
       </div>
-      {showSendReview&&<Modal title="مراجعة المراسلة قبل الإرسال" onClose={()=>setShowSendReview(false)}><div className="send-review-intro"><ShieldCheck/><div><b>راجعي البيانات قبل تثبيت المراسلة</b><p>لن يمكن تعديل الأصل بعد الإرسال إلا بإصدار نسخة مصححة موثقة.</p></div></div><dl className="send-review-grid"><div><dt>نوع المراسلة</dt><dd>{mailType==='incoming'?'كتاب وارد':mailType==='outgoing'?'كتاب صادر':'مراسلة داخلية'}</dd></div><div><dt>الموضوع</dt><dd>{form.subject}</dd></div><div className="wide"><dt>الجهة / الجهات المستلمة</dt><dd>{recipients.length?recipients.map(x=>x.name).join('، '):form.from||form.to}</dd></div><div><dt>نسخة للعلم CC</dt><dd>{copies.length?copies.join('، '):'لا يوجد'}</dd></div><div><dt>الأولوية</dt><dd>{form.priority}</dd></div><div><dt>مستوى السرية</dt><dd>{form.confidentiality}</dd></div><div><dt>المطلوب</dt><dd>{recipients.map(x=>x.action).filter(Boolean).join('، ')||'تسجيل وحفظ المراسلة'}</dd></div><div><dt>هل تتطلب ردًا؟</dt><dd>{form.requiresReply?'نعم':'لا'}</dd></div><div><dt>تاريخ الاستحقاق</dt><dd>{form.dueDate||'دون موعد'}</dd></div><div><dt>التصنيف الأرشيفي</dt><dd>{form.archiveCategory||'غير محدد'}</dd></div><div className="wide"><dt>الكلمات المفتاحية</dt><dd>{form.keywords||'لا توجد'}</dd></div><div className="wide"><dt>المرفقات ({attachments.length})</dt><dd>{attachments.length?<span className="send-review-files">{attachments.map(x=><span key={x.id}><b>{x.name}</b><small>{x.mimeType||'ملف'} · {x.size}</small></span>)}</span>:'لا توجد مرفقات'}</dd></div></dl><div className="actions send-review-actions"><button className="secondary" onClick={()=>setShowSendReview(false)}>العودة للتعديل</button><button className="primary" onClick={()=>{setShowSendReview(false);save(mailType==='incoming'?'جديد':'بانتظار التدقيق')}}><Send/> تأكيد وإرسال</button></div></Modal>}
+      {showSendReview&&<Modal title="مراجعة المراسلة قبل الإرسال" onClose={()=>!isSending&&setShowSendReview(false)}><div className="send-review-intro"><ShieldCheck/><div><b>راجعي البيانات قبل تثبيت المراسلة</b><p>لن يمكن تعديل الأصل بعد الإرسال إلا بإصدار نسخة مصححة موثقة.</p></div></div><dl className="send-review-grid"><div><dt>نوع المراسلة</dt><dd>{mailType==='incoming'?'كتاب وارد':mailType==='outgoing'?'كتاب صادر':'مراسلة داخلية'}</dd></div><div><dt>الموضوع</dt><dd>{form.subject}</dd></div><div className="wide"><dt>الجهة / الجهات المستلمة</dt><dd>{recipients.length?recipients.map(x=>x.name).join('، '):form.from||form.to}</dd></div><div><dt>نسخة للعلم CC</dt><dd>{copies.length?copies.join('، '):'لا يوجد'}</dd></div><div><dt>الأولوية</dt><dd>{form.priority}</dd></div><div><dt>مستوى السرية</dt><dd>{form.confidentiality}</dd></div><div><dt>المطلوب</dt><dd>{recipients.map(x=>x.action).filter(Boolean).join('، ')||'تسجيل وحفظ المراسلة'}</dd></div><div><dt>هل تتطلب ردًا؟</dt><dd>{form.requiresReply?'نعم':'لا'}</dd></div><div><dt>تاريخ الاستحقاق</dt><dd>{form.dueDate||'دون موعد'}</dd></div><div><dt>التصنيف الأرشيفي</dt><dd>{form.archiveCategory||'غير محدد'}</dd></div><div className="wide"><dt>الكلمات المفتاحية</dt><dd>{form.keywords||'لا توجد'}</dd></div><div className="wide"><dt>المرفقات ({attachments.length})</dt><dd>{attachments.length?<span className="send-review-files">{attachments.map(x=><span key={x.id}><b>{x.name}</b><small>{x.mimeType||'ملف'} · {x.size}</small></span>)}</span>:'لا توجد مرفقات'}</dd></div></dl><div className="actions send-review-actions"><button className="secondary" disabled={isSending} onClick={()=>setShowSendReview(false)}>العودة للتعديل</button><button className="primary" disabled={isSending} onClick={()=>{if(sendLock.current)return;sendLock.current=true;setIsSending(true);save(mailType==='incoming'?MAIL_STATUSES.RECEIVED:MAIL_STATUSES.PENDING_APPROVAL)}}><Send/> {isSending?'جارٍ الإرسال...':'تأكيد وإرسال'}</button></div></Modal>}
     </div>
   );
 }
@@ -1135,14 +1137,15 @@ export function GovernmentDetails() {
     setShowCorrection(false);
   };
   const commandStages = ["التسجيل", "التدقيق", "الاعتماد", "التنفيذ", "الإغلاق"];
-  const isClosed = Boolean(selected.archived || ["مؤرشف", "مغلقة", "تم الإنجاز"].includes(selected.status));
+  const normalizedSelectedStatus = normalizeMailStatus(selected.status);
+  const isClosed = Boolean(selected.archived || isFinalMailStatus(selected.status));
   const commandStage = isClosed
     ? 4
-    : selected.status === "بانتظار الاعتماد"
-      ? 2
-      : selected.status === "بانتظار التدقيق"
-        ? 1
-        : ["مسودة", "جديد"].includes(selected.status)
+    : isPendingReviewStatus(selected.status)
+      ? 1
+      : normalizedSelectedStatus === MAIL_STATUSES.PENDING_APPROVAL
+        ? 2
+        : [MAIL_STATUSES.DRAFT, MAIL_STATUSES.RECEIVED].includes(normalizedSelectedStatus as never)
           ? 0
           : 3;
   const commandProgress = (commandStage + 1) * 20;
@@ -1156,11 +1159,11 @@ export function GovernmentDetails() {
         : `موعدها ${selected.dueDate}`;
   const nextAction = isClosed
     ? "مراجعة سجل الأرشفة"
-    : selected.status === "بانتظار التدقيق"
+    : isPendingReviewStatus(selected.status)
       ? "إتمام التدقيق"
-      : selected.status === "بانتظار الاعتماد"
+      : normalizedSelectedStatus === MAIL_STATUSES.PENDING_APPROVAL
         ? "اعتماد المراسلة"
-        : selected.status === "معاد للتعديل"
+        : normalizedSelectedStatus === MAIL_STATUSES.RETURNED
           ? "إصدار نسخة مصححة"
           : "تحويلها للجهة المختصة";
   const standardDays = selected.priority === "عاجل جداً" ? 1 : selected.priority === "عاجل" ? 3 : 5;
@@ -1172,8 +1175,8 @@ export function GovernmentDetails() {
   const deliveryRecipients = selected.recipients?.length ? selected.recipients.map((recipient) => {const status=recipient.viewedAt?'تم الاطلاع':recipient.receivedAt?'تم الاستلام':recipient.sentAt?'تم الإرسال':'قيد الانتظار',timestamp=recipient.viewedAt||recipient.receivedAt||recipient.sentAt;return {name:recipient.name,status,time:timestamp?new Date(timestamp).toLocaleString('ar-PS'):'—',sentAt:recipient.sentAt,receivedAt:recipient.receivedAt,viewedAt:recipient.viewedAt}}) : [{name:selected.to,status:selected.viewedAt?'تم الاطلاع':selected.sentAt?'تم الإرسال':'قيد الانتظار',time:selected.viewedAt?new Date(selected.viewedAt).toLocaleString('ar-PS'):selected.sentAt?new Date(selected.sentAt).toLocaleString('ar-PS'):'—',sentAt:selected.sentAt,receivedAt:undefined,viewedAt:selected.viewedAt}];
   const runNextAction = () => {
     if (isClosed) return navigate("/app/archive");
-    if (["بانتظار التدقيق", "بانتظار الاعتماد"].includes(selected.status)) return navigate("/app/approvals");
-    if (selected.status === "معاد للتعديل") return openCorrection();
+    if (normalizedSelectedStatus === MAIL_STATUSES.PENDING_APPROVAL) return navigate("/app/approvals");
+    if (normalizedSelectedStatus === MAIL_STATUSES.RETURNED) return openCorrection();
     setShowTransfer(true);
   };
   return (
@@ -1197,7 +1200,7 @@ export function GovernmentDetails() {
         </div>
         <div className="command-center-foot">
           <div><UserPlus/><span><small>المسؤول الحالي</small><b>{selected.employee || selected.department || "غير محدد"}</b><small>منذ {ownerHours < 24 ? `${ownerHours} ساعة` : `${Math.floor(ownerHours / 24)} يوم`}</small></span></div>
-          <div><Clock3/><span><small>المرحلة الحالية</small><b>{commandStages[commandStage]} · {selected.status}</b></span></div>
+          <div><Clock3/><span><small>المرحلة الحالية</small><b>{commandStages[commandStage]} · {normalizeMailStatus(selected.status)}</b></span></div>
           <div className="command-next"><span><small>الخطوة المقترحة</small><b>{nextAction}</b></span><button onClick={runNextAction}>{nextAction}<ArrowLeftRight/></button></div>
         </div>
       </section>
@@ -1334,11 +1337,11 @@ export function GovernmentDetails() {
             </div>
             <div>
               <button className="secondary official-preview-trigger" onClick={()=>{recordAudit("معاينة كتاب رسمي",`معاينة النسخة الرسمية ${selected.subject}`,selected.number);setShowOfficialPreview(true)}}><FileText/> معاينة رسمية</button>
-              {["جديد", "مسودة", "معاد للتعديل"].includes(selected.status) && (
+              {[MAIL_STATUSES.RECEIVED, MAIL_STATUSES.DRAFT, MAIL_STATUSES.RETURNED].includes(normalizedSelectedStatus as never) && (
                 <button
                   className="primary"
                   onClick={() =>
-                    doStatus("بانتظار التدقيق", "إرسال المراسلة للتدقيق")
+                    doStatus(MAIL_STATUSES.PENDING_APPROVAL, "إرسال المراسلة للتدقيق")
                   }
                 >
                   <Send /> إرسال للتدقيق
@@ -1373,7 +1376,7 @@ export function GovernmentDetails() {
               <FileClock /> إصدار تصحيح
             </button>
           </div>
-          {(selected.archived || selected.status === "مؤرشف") && (
+          {(selected.archived || normalizedSelectedStatus === MAIL_STATUSES.ARCHIVED) && (
             <section className="archive-record-summary">
               <Archive />
               <div><small>سجل الأرشيف المركزي</small><b>رمز الأرشيف: {selected.archiveCode || "غير محدد"}</b></div>
@@ -1498,14 +1501,14 @@ export function GovernmentDetails() {
             </button>
             <button
               className="success"
-              onClick={() => doStatus("تم الإنجاز", "تنفيذ المراسلة")}
+              onClick={() => doStatus(MAIL_STATUSES.COMPLETED, "تنفيذ المراسلة")}
             >
               <Check /> تنفيذ
             </button>
             <button onClick={() => setShowExtension(true)}>
               <Clock3 /> تمديد
             </button>
-            <button onClick={() => doStatus("معاد للتعديل", "إرجاع المراسلة")}>
+            <button onClick={() => doStatus(MAIL_STATUSES.RETURNED, "إرجاع المراسلة")}>
               <Reply /> إرجاع
             </button>
             <button
@@ -1522,7 +1525,7 @@ export function GovernmentDetails() {
             >
               <Ban /> إلغاء
             </button>
-            {["مغلقة", "مؤرشف"].includes(selected.status) ? (
+            {[MAIL_STATUSES.CLOSED, MAIL_STATUSES.ARCHIVED].includes(normalizedSelectedStatus as never) ? (
               <button
                 className="success"
                 onClick={() =>
@@ -1897,5 +1900,5 @@ export function GovernmentDetails() {
 
 export function CorrespondenceVerification(){
   const {id=""}=useParams(),navigate=useNavigate(),mail=useStore(s=>s.mail),record=mail.find(m=>m.id===id);
-  return <main className="verification-page" dir="rtl"><section className="verification-card"><header><div className="official-logo">م</div><div><small>بلدية المغازي</small><h1>التحقق من المراسلة</h1><p>خدمة تحقق تصورية للنسخة الإلكترونية</p></div></header>{record?<><div className="verification-success"><BadgeCheck/><span><b>الوثيقة مسجلة وصحيحة</b><small>تم العثور على مرجع مطابق في سجل المراسلات.</small></span></div><dl><div><dt>رقم الكتاب</dt><dd>{record.number}</dd></div><div><dt>تاريخ الإصدار</dt><dd>{record.date}</dd></div><div><dt>الجهة المصدرة</dt><dd>{record.from}</dd></div><div><dt>حالة الوثيقة</dt><dd>{record.archived?"مؤرشفة":record.status}</dd></div><div><dt>رقم الإصدار</dt><dd>{1+(record.versions?.length||0)}</dd></div><div><dt>رمز التحقق</dt><dd>{`MUN-${record.id}-${record.date.replaceAll('-','')}`}</dd></div></dl><p className="verification-privacy"><ShieldCheck/> حفاظًا على الخصوصية لا تعرض هذه الصفحة نص الكتاب أو أسماء المستلمين أو المرفقات.</p></>:<div className="verification-missing"><XCircle/><h2>تعذر التحقق من الوثيقة</h2><p>رقم المرجع غير موجود في البيانات الحالية.</p></div>}<footer><button className="secondary" onClick={()=>navigate(-1)}>رجوع</button><button className="primary" onClick={()=>navigate("/app/dashboard")}>العودة للنظام</button></footer></section></main>
+  return <main className="verification-page" dir="rtl"><section className="verification-card"><header><div className="official-logo"><span>شعار بلدية<br/>المغازي</span></div><div><small>بلدية المغازي</small><h1>التحقق من المراسلة</h1><p>خدمة تحقق تصورية للنسخة الإلكترونية</p></div></header>{record?<><div className="verification-success"><BadgeCheck/><span><b>الوثيقة مسجلة وصحيحة</b><small>تم العثور على مرجع مطابق في سجل المراسلات.</small></span></div><dl><div><dt>رقم الكتاب</dt><dd>{record.number}</dd></div><div><dt>تاريخ الإصدار</dt><dd>{record.date}</dd></div><div><dt>الجهة المصدرة</dt><dd>{record.from}</dd></div><div><dt>حالة الوثيقة</dt><dd><Status>{record.archived?MAIL_STATUSES.ARCHIVED:record.status}</Status></dd></div><div><dt>رقم الإصدار</dt><dd>{1+(record.versions?.length||0)}</dd></div><div><dt>رمز التحقق</dt><dd>{`MUN-${record.id}-${record.date.replaceAll('-','')}`}</dd></div></dl><p className="verification-privacy"><ShieldCheck/> حفاظًا على الخصوصية لا تعرض هذه الصفحة نص الكتاب أو أسماء المستلمين أو المرفقات.</p></>:<div className="verification-missing"><XCircle/><h2>تعذر التحقق من الوثيقة</h2><p>رقم المرجع غير موجود في البيانات الحالية.</p></div>}<footer><button className="secondary" onClick={()=>navigate(-1)}>رجوع</button><button className="primary" onClick={()=>navigate("/app/dashboard")}>العودة للنظام</button></footer></section></main>
 }

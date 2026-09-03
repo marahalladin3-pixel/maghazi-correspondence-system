@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { useStore } from "./store";
 import { canAccessPath } from "./access";
-import { mailStatusTone, normalizeMailStatus } from "./mailStatuses";
+import { isFinalMailStatus, mailStatusTone, normalizeMailStatus } from "./mailStatuses";
 export const nav = [
   ["/app/dashboard", "لوحة التحكم", Home],
   ["/app/correspondence", "كل المراسلات", FolderArchive],
@@ -78,10 +78,13 @@ function ProfileMenu() {
   const user = useStore((s) => s.user),
     setUser = useStore((s) => s.setUser),
     navigate = useNavigate();
-  const chooseAccount = (kind: "registry" | "employee") => {
-    setUser(kind === "registry"
-      ? { name: "موظف الديوان", role: "مأمور المراسلات", department: "الديوان" }
-      : { name: "سارة خالد", role: "موظف", department: "الدائرة المالية" });
+  const chooseAccount = (kind: "registry" | "approver" | "employee") => {
+    const accounts = {
+      registry: { name: "موظف الديوان", role: "مأمور المراسلات", department: "الديوان" },
+      approver: { name: "محمد أحمد", role: "رئيس قسم", department: "الديوان" },
+      employee: { name: "سارة خالد", role: "موظف", department: "الدائرة المالية" },
+    };
+    setUser(accounts[kind]);
     setOpen(false);
     navigate("/app/dashboard");
   };
@@ -122,10 +125,13 @@ function ProfileMenu() {
             <Settings /> الإعدادات
           </button>
           <div className="account-menu-label">حسابات العرض</div>
-          <button className={user.role !== "موظف" ? "current-account" : ""} onClick={() => chooseAccount("registry")}>
+          <button className={user.name === "موظف الديوان" ? "current-account" : ""} onClick={() => chooseAccount("registry")}>
             <UserCheck /> موظف الديوان <small>كامل الصلاحيات التشغيلية</small>
           </button>
-          <button className={user.role === "موظف" ? "current-account" : ""} onClick={() => chooseAccount("employee")}>
+          <button className={user.name === "محمد أحمد" ? "current-account" : ""} onClick={() => chooseAccount("approver")}>
+            <UserCheck /> محمد أحمد <small>رئيس قسم — تدقيق واعتماد</small>
+          </button>
+          <button className={user.name === "سارة خالد" ? "current-account" : ""} onClick={() => chooseAccount("employee")}>
             <RefreshCw /> سارة خالد <small>حساب موظف عادي</small>
           </button>
           <button onClick={()=>setOpen(false)}>
@@ -158,7 +164,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     .filter(
       (m) =>
         m.dueDate &&
-        !["تم الإنجاز", "مغلقة", "مؤرشف", "ملغي"].includes(m.status),
+        !isFinalMailStatus(m.status),
     )
     .map((m) => {
       const due = new Date(`${m.dueDate}T00:00:00`),
@@ -256,7 +262,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             />
             {searchOpen && q.trim().length >= 2 && <div className="quick-search-results">
               <div className="quick-search-head"><b>نتائج سريعة</b><span>{quickResults.length} نتائج</span></div>
-              {quickResults.map((m) => <button type="button" key={m.id} onClick={() => { navigate(`/app/mail/${m.id}`); setQ(""); setSearchOpen(false); }}><i>{m.type === "incoming" ? "و" : m.type === "outgoing" ? "ص" : "د"}</i><div><b>{m.subject}</b><span>{m.number} · {m.type === "outgoing" ? m.to : m.from}</span></div><small>{m.status}</small></button>)}
+              {quickResults.map((m) => <button type="button" key={m.id} onClick={() => { navigate(`/app/mail/${m.id}`); setQ(""); setSearchOpen(false); }}><i>{m.type === "incoming" ? "و" : m.type === "outgoing" ? "ص" : "د"}</i><div><b>{m.subject}</b><span>{m.number} · {m.type === "outgoing" ? m.to : m.from}</span></div><StatusBadge status={m.status}/></button>)}
               {!quickResults.length && <div className="quick-search-empty"><Search/><b>لا توجد نتائج مطابقة</b><span>جرّبي رقم الكتاب أو اسم الجهة.</span></div>}
               <button type="submit" className="quick-search-all">فتح نتائج البحث الكاملة</button>
             </div>}
@@ -338,7 +344,7 @@ export const StatusBadge = ({ status }: { status: string }) => {
 export const Status = ({ children }: { children: React.ReactNode }) => <StatusBadge status={String(children)} />;
 export function deadlineState(date?: string, status?: string) {
   if (!date) return "none";
-  if (["تم الإنجاز", "مؤرشف", "ملغي"].includes(status || "")) return "done";
+  if (isFinalMailStatus(status || "")) return "done";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = new Date(`${date}T00:00:00`);

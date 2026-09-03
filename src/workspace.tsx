@@ -12,6 +12,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Deadline, deadlineState, Empty, PageHead, Status } from "./components";
 import { label, useStore } from "./store";
+import { isFinalMailStatus, MAIL_STATUSES, normalizeMailStatus } from "./mailStatuses";
 
 export function ProfessionalDashboard() {
   const allMail = useStore((s) => s.mail),
@@ -27,17 +28,13 @@ export function ProfessionalDashboard() {
     (m) =>
       m.type === "outgoing" && m.date === new Date().toISOString().slice(0, 10),
   ).length;
-  const processing = mail.filter((m) =>
-    ["قيد المعالجة", "تم التحويل", "بانتظار الرد"].includes(m.status),
-  ).length;
-  const complete = mail.filter((m) =>
-    ["تم الإنجاز", "مؤرشف"].includes(m.status),
-  ).length;
+  const processing = mail.filter((m) => [MAIL_STATUSES.IN_PROGRESS, MAIL_STATUSES.REFERRED, MAIL_STATUSES.WAITING_REPLY].includes(normalizeMailStatus(m.status) as never)).length;
+  const complete = mail.filter((m) => isFinalMailStatus(m.status)).length;
   const percentage = Math.round((complete / (mail.length || 1)) * 100);
   const priority = mail
     .filter(
       (m) =>
-        m.priority !== "عادي" || ["متأخر", "بانتظار الرد"].includes(m.status),
+        m.priority !== "عادي" || [MAIL_STATUSES.OVERDUE, MAIL_STATUSES.WAITING_REPLY].includes(normalizeMailStatus(m.status) as never),
     )
     .slice(0, 6);
   const days = [
@@ -231,14 +228,13 @@ export function ProfessionalInbox() {
   const match = (m: (typeof mail)[number], t: InboxTab) =>
     t === "all" ||
     (t === "unread" && !m.read) ||
-    (t === "action" &&
-      ["جديد", "قيد المعالجة", "تم التحويل"].includes(m.status)) ||
-    (t === "waiting" && m.status === "بانتظار الرد") ||
+    (t === "action" && [MAIL_STATUSES.RECEIVED, MAIL_STATUSES.IN_PROGRESS, MAIL_STATUSES.REFERRED].includes(normalizeMailStatus(m.status) as never)) ||
+    (t === "waiting" && normalizeMailStatus(m.status) === MAIL_STATUSES.WAITING_REPLY) ||
     (t === "late" && deadlineState(m.dueDate, m.status) === "overdue") ||
     (t === "today" && deadlineState(m.dueDate, m.status) === "today") ||
     (t === "closure" &&
       Boolean(m.requiresClosure) &&
-      !["تم الإنجاز", "مؤرشف"].includes(m.status)) ||
+      !isFinalMailStatus(m.status)) ||
     (t === "extension" && Boolean(m.extensionRequested)) ||
     (t === "urgent" && Boolean(m.urgentReply || m.priority === "عاجل جداً")) ||
     (t === "brief" && Boolean(m.requiresBrief)) ||
@@ -247,9 +243,9 @@ export function ProfessionalInbox() {
         m.copies?.some((x) => x === user.name || x === user.department),
       )) ||
     (t === "favorite" && Boolean(m.favorite)) ||
-    (t === "drafts" && m.status === "مسودة") ||
-    (t === "returned" && m.status === "معاد للتعديل") ||
-    (t === "completed" && ["تم الإنجاز", "مؤرشف"].includes(m.status));
+    (t === "drafts" && normalizeMailStatus(m.status) === MAIL_STATUSES.DRAFT) ||
+    (t === "returned" && normalizeMailStatus(m.status) === MAIL_STATUSES.RETURNED) ||
+    (t === "completed" && isFinalMailStatus(m.status));
   const tabs: [InboxTab, string][] = [
     ["all", "الكل"],
     ["unread", "غير مقروء"],

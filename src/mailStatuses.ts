@@ -44,3 +44,23 @@ export function mailStatusTone(status: string): StatusTone {
   if (value.includes("انتظار") || value.includes("مسودة") || value.includes("قيد")) return "pending";
   return "neutral";
 }
+
+const finalStatuses = new Set<MailStatus>([
+  MAIL_STATUSES.COMPLETED,
+  MAIL_STATUSES.CLOSED,
+  MAIL_STATUSES.ARCHIVED,
+  MAIL_STATUSES.CANCELLED,
+  MAIL_STATUSES.REJECTED,
+]);
+
+export function isFinalMailStatus(status: string): boolean {
+  return finalStatuses.has(normalizeMailStatus(status) as MailStatus);
+}
+
+export function isMailStatus(status: string, expected: MailStatus): boolean {
+  return normalizeMailStatus(status) === expected;
+}
+
+export function isPendingReviewStatus(status: string): boolean {
+  return status === "بانتظار التدقيق";
+}

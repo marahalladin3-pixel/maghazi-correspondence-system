@@ -3473,3 +3473,9 @@ dd {
   body:not(:has(.official-document-preview)) .content>.page-head,body:not(:has(.official-document-preview)) .report-switcher,body:not(:has(.official-document-preview)) .report-filter-toolbar{display:none!important}
   .report-grid,.response-kpis,.report-audit-grid{break-inside:avoid}.report-stats{grid-template-columns:repeat(4,1fr)!important}.stat,.response-kpis .panel,.report-grid .panel,.report-detail{box-shadow:none!important;border:1px solid #cfd5dd!important}
 }
+@media print{
+  body:has(.official-document-preview) #root>.shell{display:block!important}
+  body:has(.official-document-preview) .compact-mail-details>*{display:none!important}
+  body:has(.official-document-preview) .compact-mail-details>.modal-bg:has(.official-document-preview){display:block!important}
+  body:has(.official-document-preview) .content{padding:0!important}
+}
