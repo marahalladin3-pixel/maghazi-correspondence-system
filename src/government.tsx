@@ -6,6 +6,7 @@ import {
   ArrowLeftRight,
   BadgeCheck,
   Ban,
+  Building2,
   Camera,
   CalendarClock,
   Check,
@@ -140,6 +141,7 @@ export function GovernmentCompose() {
     [linked, setLinked] = useState<string[]>([]),
     [linkNumber, setLinkNumber] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [showSendReview, setShowSendReview] = useState(false);
   const appendAttachments = (files: FileList | null) => {
     const next = Array.from(files || []).map((file) => ({
       id: crypto.randomUUID(),
@@ -272,12 +274,15 @@ export function GovernmentCompose() {
       .map((r) => r.dueDate)
       .filter(Boolean)
       .sort();
+    const sentAt = status === "مسودة" ? undefined : new Date().toISOString();
+    const routedRecipients = recipients.map((recipient) => ({...recipient,sentAt:recipient.sentAt || sentAt}));
     const record = add({
       ...form,
       dueDate: form.dueDate || recipientDates[0] || "",
       type: mailType,
       status,
-      recipients,
+      recipients: routedRecipients,
+      sentAt,
       copies,
       attachments,
       linkedMailIds: linked,
@@ -285,7 +290,21 @@ export function GovernmentCompose() {
       requiresBrief: recipients.some((r) => r.action.includes("الإفادة")),
       urgentReply: form.priority === "عاجل جداً",
     });
+    if (status !== "مسودة") sessionStorage.setItem("municipality-compose-success", "true");
     navigate(`/app/mail/${record.id}`);
+  };
+  const reviewBeforeSend = () => {
+    if (!form.subject.trim()) {
+      setFormFeedback({ kind: "error", text: "اكتب عنوان المراسلة قبل الإرسال." });
+      document.querySelector<HTMLInputElement>('input[placeholder="عنوان واضح ومختصر للمراسلة"]')?.focus();
+      return;
+    }
+    if (mailType !== "incoming" && !recipients.length) {
+      setFormFeedback({ kind: "error", text: "أضف مستلمًا واحدًا على الأقل قبل الإرسال." });
+      return;
+    }
+    setFormFeedback(null);
+    setShowSendReview(true);
   };
   return (
     <div className="compact-compose-page">
@@ -836,15 +855,14 @@ export function GovernmentCompose() {
             </button>
             <button
               className="primary"
-              onClick={() =>
-                save(mailType === "incoming" ? "جديد" : "بانتظار التدقيق")
-              }
+              onClick={reviewBeforeSend}
             >
               <Send /> إرسال المراسلة
             </button>
           </div>
         </aside>
       </div>
+      {showSendReview&&<Modal title="مراجعة قبل الإرسال" onClose={()=>setShowSendReview(false)}><div className="send-review-intro"><ShieldCheck/><div><b>راجعي البيانات قبل تثبيت المراسلة</b><p>لن يمكن تعديل الأصل بعد الإرسال إلا بإصدار نسخة مصححة موثقة.</p></div></div><dl className="send-review-grid"><div><dt>رقم المسودة</dt><dd>يُولّد تلقائيًا عند التأكيد</dd></div><div><dt>نوع المراسلة</dt><dd>{mailType==='incoming'?'كتاب وارد':mailType==='outgoing'?'كتاب صادر':'مراسلة داخلية'}</dd></div><div className="wide"><dt>الموضوع</dt><dd>{form.subject}</dd></div><div><dt>المستلمون</dt><dd>{recipients.length?recipients.map(x=>x.name).join('، '):form.from||form.to}</dd></div><div><dt>نسخة إلى</dt><dd>{copies.length?copies.join('، '):'لا يوجد'}</dd></div><div><dt>الأولوية</dt><dd>{form.priority}</dd></div><div><dt>مستوى السرية</dt><dd>{form.confidentiality}</dd></div><div><dt>يتطلب ردًا</dt><dd>{form.requiresReply?'نعم':'لا'}</dd></div><div><dt>تاريخ الاستحقاق</dt><dd>{form.dueDate||'دون موعد'}</dd></div><div><dt>المطلوب</dt><dd>{recipients.map(x=>x.action).filter(Boolean).join('، ')||'تسجيل وحفظ المراسلة'}</dd></div><div className="wide"><dt>المرفقات ({attachments.length})</dt><dd>{attachments.length?attachments.map(x=>x.name).join('، '):'لا توجد مرفقات'}</dd></div></dl><div className="actions send-review-actions"><button className="secondary" onClick={()=>setShowSendReview(false)}>رجوع للتعديل</button><button className="primary" onClick={()=>{setShowSendReview(false);save(mailType==='incoming'?'جديد':'بانتظار التدقيق')}}><Send/> تأكيد الإرسال</button></div></Modal>}
     </div>
   );
 }
@@ -863,6 +881,7 @@ export function GovernmentDetails() {
     archive = useStore((s) => s.archive),
     navigate = useNavigate();
   const [selectedId, setSelectedId] = useState(id),
+    [sentToast, setSentToast] = useState(() => sessionStorage.getItem("municipality-compose-success") === "true"),
     [note, setNote] = useState(""),
     [target, setTarget] = useState(""),
     [action, setAction] = useState("للمتابعة"),
@@ -882,7 +901,7 @@ export function GovernmentDetails() {
     [showArchiveForm, setShowArchiveForm] = useState(false),
     [showOfficialPreview, setShowOfficialPreview] = useState(false),
     [timelineFilter, setTimelineFilter] = useState<"all"|"referrals"|"replies"|"approvals"|"system">("all"),
-    [detailTab, setDetailTab] = useState<"overview"|"replies"|"delivery">("overview"),
+    [detailTab, setDetailTab] = useState<"overview"|"document"|"path"|"delivery"|"history">("overview"),
     [copyTarget, setCopyTarget] = useState(""),
     [newDue, setNewDue] = useState(""),
     [replySubject, setReplySubject] = useState(""),
@@ -902,6 +921,7 @@ export function GovernmentDetails() {
       body: "",
       reason: "",
     });
+  useEffect(()=>{if(!sentToast)return;sessionStorage.removeItem("municipality-compose-success");const timer=window.setTimeout(()=>setSentToast(false),2400);return()=>window.clearTimeout(timer)},[sentToast]);
   const selected = all.find((x) => x.id === selectedId) || m;
   const related = useMemo(
     () => all.filter((x) => x.type === m?.type && !x.archived).slice(0, 8),
@@ -1150,7 +1170,7 @@ export function GovernmentDetails() {
   const ownerSince = selected.workflow.length ? selected.workflow[selected.workflow.length - 1].time : selected.sentAt || `${selected.date}T08:00:00`;
   const ownerHours = Math.max(1, Math.floor((Date.now() - new Date(ownerSince).getTime()) / 3600000));
   const filteredThreadEvents = threadEvents.filter((event) => timelineFilter === "all" || (timelineFilter === "referrals" && ["إحالة", "نسخة"].includes(event.kind)) || (timelineFilter === "replies" && ["رد", "ملاحظة"].includes(event.kind)) || (timelineFilter === "approvals" && (event.title.includes("اعتماد") || event.title.includes("تدقيق"))) || (timelineFilter === "system" && ["إنشاء", "إجراء"].includes(event.kind)));
-  const deliveryRecipients = selected.recipients?.length ? selected.recipients.map((recipient, index) => ({name:recipient.name,status:index===0&&selected.viewedAt?'تم الاطلاع':index<2?'تم الاستلام':'قيد الانتظار',time:index===0&&selected.viewedAt?new Date(selected.viewedAt).toLocaleTimeString('ar-PS',{hour:'2-digit',minute:'2-digit'}):index<2?'09:17':'—'})) : [{name:selected.to,status:selected.viewedAt?'تم الاطلاع':selected.sentAt?'تم الاستلام':'قيد الانتظار',time:selected.viewedAt?new Date(selected.viewedAt).toLocaleTimeString('ar-PS',{hour:'2-digit',minute:'2-digit'}):selected.sentAt?'09:17':'—'}];
+  const deliveryRecipients = selected.recipients?.length ? selected.recipients.map((recipient) => {const status=recipient.viewedAt?'تم الاطلاع':recipient.receivedAt?'تم الاستلام':recipient.sentAt?'تم الإرسال':'قيد الانتظار',timestamp=recipient.viewedAt||recipient.receivedAt||recipient.sentAt;return {name:recipient.name,status,time:timestamp?new Date(timestamp).toLocaleString('ar-PS'):'—',sentAt:recipient.sentAt,receivedAt:recipient.receivedAt,viewedAt:recipient.viewedAt}}) : [{name:selected.to,status:selected.viewedAt?'تم الاطلاع':selected.sentAt?'تم الإرسال':'قيد الانتظار',time:selected.viewedAt?new Date(selected.viewedAt).toLocaleString('ar-PS'):selected.sentAt?new Date(selected.sentAt).toLocaleString('ar-PS'):'—',sentAt:selected.sentAt,receivedAt:undefined,viewedAt:selected.viewedAt}];
   const runNextAction = () => {
     if (isClosed) return navigate("/app/archive");
     if (["بانتظار التدقيق", "بانتظار الاعتماد"].includes(selected.status)) return navigate("/app/approvals");
@@ -1158,7 +1178,8 @@ export function GovernmentDetails() {
     setShowTransfer(true);
   };
   return (
-    <div className="compact-mail-details">
+    <div className="compact-mail-details" data-detail-tab={detailTab}>
+      {sentToast&&<div className="toast success-toast" role="status"><Check/> تم إرسال المراسلة بنجاح</div>}
       <PageHead
         title={`تفاصيل المراسلة ${selected.number}`}
         subtitle="عرض الكتاب وسجل التحويلات والإجراءات التشغيلية في مساحة واحدة"
@@ -1230,10 +1251,13 @@ export function GovernmentDetails() {
       </section>
       <div className="detail-content-tabs">
         <button className={detailTab==='overview'?'active':''} onClick={()=>setDetailTab('overview')}>نظرة عامة</button>
-        <button className={detailTab==='replies'?'active':''} onClick={()=>setDetailTab('replies')}>الردود <b>{selected.replies?.length||0}</b></button>
-        <button className={detailTab==='delivery'?'active':''} onClick={()=>setDetailTab('delivery')}>حالة المستلمين <b>{deliveryRecipients.length}</b></button>
+        <button className={detailTab==='document'?'active':''} onClick={()=>setDetailTab('document')}>الوثيقة والمرفقات <b>{selected.attachments.length}</b></button>
+        <button className={detailTab==='path'?'active':''} onClick={()=>setDetailTab('path')}>المسار والردود <b>{selected.workflow.length+(selected.replies?.length||0)}</b></button>
+        <button className={detailTab==='delivery'?'active':''} onClick={()=>setDetailTab('delivery')}>الاستلام والاطلاع <b>{deliveryRecipients.length}</b></button>
+        <button className={detailTab==='history'?'active':''} onClick={()=>setDetailTab('history')}>السجل والإصدارات <b>{1+(selected.versions?.length||0)}</b></button>
       </div>
-      {detailTab==='replies'&&<section className="panel replies-thread-panel">
+      {detailTab==='overview'&&<section className="panel detail-overview-panel"><div className="section-heading"><FileText/><div><h2>بيانات المراسلة</h2><p>البيانات الأساسية والتشغيلية في مساحة واحدة</p></div></div><dl><div><dt>المرسل</dt><dd>{selected.from}</dd></div><div><dt>المستلم</dt><dd>{selected.to}</dd></div><div><dt>النوع</dt><dd>{selected.correspondenceKind||label(selected.type)}</dd></div><div><dt>الأولوية</dt><dd>{selected.priority}</dd></div><div><dt>السرية</dt><dd>{selected.confidentiality||'داخلي'}</dd></div><div><dt>تاريخ الإنشاء</dt><dd>{selected.date}</dd></div><div><dt>تاريخ الإرسال</dt><dd>{selected.sentAt?new Date(selected.sentAt).toLocaleString('ar-PS'):'لم ترسل بعد'}</dd></div><div><dt>الاستحقاق</dt><dd>{selected.dueDate||'دون موعد'}</dd></div><div><dt>المطلوب</dt><dd>{selected.recipients?.map(x=>x.action).filter(Boolean).join('، ')||nextAction}</dd></div><div><dt>التصنيف</dt><dd>{selected.archiveCategory||selected.copyCategory||'عام'}</dd></div><div><dt>المسؤول الحالي</dt><dd>{selected.employee||selected.department||'غير محدد'}</dd></div><div><dt>SLA</dt><dd>{remainingSla<0?`متجاوز ${Math.abs(remainingSla)} يوم`:`متبقي ${remainingSla} أيام`}</dd></div></dl></section>}
+      {detailTab==='path'&&<section className="panel replies-thread-panel">
         <div className="panel-head"><div><h2>سلسلة الردود</h2><p>جميع الردود المرتبطة بالمراسلة الأصلية ضمن محادثة واحدة.</p></div><button className="primary" onClick={openReply}><Reply/> إضافة رد</button></div>
         <div className="replies-conversation">{selected.replies?.length?selected.replies.map((reply)=><article key={reply.id}><i>{reply.author.slice(0,1)}</i><div><header><b>{reply.author}</b><span>{new Date(reply.time).toLocaleString('ar-PS')}</span></header><p>{reply.text}</p>{reply.attachments?.length?<footer><Paperclip/>{reply.attachments.map(file=><span key={file.id}>{file.name} · {file.size}</span>)}</footer>:null}</div><Status>تم الإرسال</Status></article>):<div className="reply-empty"><Reply/><b>لا توجد ردود حتى الآن</b><span>يمكن إضافة رد رسمي أو حفظه كمسودة.</span><button onClick={openReply}>إنشاء أول رد</button></div>}</div>
       </section>}
@@ -1242,6 +1266,7 @@ export function GovernmentDetails() {
         <div className="delivery-progress"><progress max={deliveryRecipients.length} value={deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length}/><b>{Math.round(deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length/deliveryRecipients.length*100)}%</b></div>
         <div className="recipient-status-list">{deliveryRecipients.map((recipient,index)=><article key={`${recipient.name}-${index}`}><i className={recipient.status==='تم الاطلاع'?'seen':recipient.status==='تم الاستلام'?'received':'waiting'}>{recipient.status==='تم الاطلاع'?<Eye/>:recipient.status==='تم الاستلام'?<Check/>:<Clock3/>}</i><div><b>{recipient.name}</b><span>{recipient.status}</span></div><time>{recipient.time}</time></article>)}</div>
       </section>}
+      {detailTab==='history'&&<section className="panel detail-history-panel"><div className="panel-head"><div><h2>سجل التغييرات والإصدارات</h2><p>الأصل وجميع النسخ المصححة وأسباب إصدارها</p></div><FileClock/></div><div className="version-ledger"><article><i>1</i><div><b>الإصدار الأصلي</b><span>{selected.originalSnapshot?.sealedAt?new Date(selected.originalSnapshot.sealedAt).toLocaleString('ar-PS'):selected.date}</span><p>إنشاء الأصل الإلكتروني وحفظه في السجل.</p></div></article>{(selected.versions||[]).map(version=><article key={version.id}><i>{version.version}</i><div><b>{version.subject}</b><span>{new Date(version.time).toLocaleString('ar-PS')} · {version.author}</span><p>{version.reason}</p></div></article>)}</div>{!(selected.versions||[]).length&&<p className="history-clean"><ShieldCheck/> لا توجد تعديلات على النسخة الأصلية.</p>}</section>}
       <details className="panel correspondence-thread" open>
         <summary className="panel-head">
           <div>
@@ -1574,13 +1599,14 @@ export function GovernmentDetails() {
       {showOfficialPreview && (
         <Modal title="معاينة النسخة الرسمية" onClose={()=>setShowOfficialPreview(false)}>
           <article className="official-document-preview" dir="rtl">
-            <header><div className="official-logo">م</div><div><b>بلدية المغازي</b><span>نظام المراسلات والأرشيف الإلكتروني</span></div><aside><small>رقم الكتاب</small><strong>{selected.number}</strong><small>التاريخ: {selected.date}</small></aside></header>
+            <header><div className="official-logo"><Building2 aria-hidden="true"/></div><div><b>دولة فلسطين</b><strong>بلدية المغازي</strong><span>نظام المراسلات والأرشيف الإلكتروني</span></div><aside><small>رقم الكتاب</small><strong>{selected.number}</strong><small>التاريخ: {selected.date}</small></aside></header>
             <div className="official-parties"><p>إلى: <b>{selected.to}</b></p><p>من: <b>{selected.from}</b></p><p>الموضوع: <b>{selected.subject}</b></p></div>
             <div className="official-letter-body">{selected.body||"لا يوجد نص تفصيلي مسجل لهذه المراسلة."}</div>
-            <footer><div><b>الاعتماد الإلكتروني</b><span>{selected.employee||user.name}</span><small>نسخة إلكترونية موثقة — الإصدار {1+(selected.versions?.length||0)}</small></div><div className="verification-code"><div className="fake-qr" aria-label="رمز تحقق إلكتروني"><QrCode/></div><span>رمز التحقق</span><b>{`MUN-${selected.id}-${selected.date.replaceAll('-','')}`}</b></div></footer>
+            <footer><div className="official-approval"><b>الاعتماد الإلكتروني</b><span>{selected.employee||user.name}</span><small>الصفة: {selected.jobTitle||"المسؤول عن المراسلة"}</small><div className="stamp-space">مساحة الختم والتوقيع</div><small>نسخة إلكترونية موثقة — الإصدار {1+(selected.versions?.length||0)}</small></div><div className="verification-code"><div className="fake-qr" aria-label="رمز تحقق إلكتروني"><QrCode/></div><span>رمز التحقق</span><b>{`MUN-${selected.id}-${selected.date.replaceAll('-','')}`}</b></div></footer>
+            <div className="official-page-footer"><span>بلدية المغازي — المحافظة الوسطى، فلسطين</span><span>صفحة 1 من 1</span></div>
           </article>
           <p className="verification-note"><ShieldCheck/> يمكن مطابقة رقم الكتاب ورمز التحقق مع سجل المراسلة الإلكتروني. الربط العام للرمز يُفعّل عند توصيل الخادم.</p>
-          <div className="actions"><button className="secondary" onClick={()=>setShowOfficialPreview(false)}>إغلاق</button><button className="secondary" onClick={()=>navigate(`/verify/${selected.id}`)}><QrCode/> فتح صفحة التحقق</button><button className="primary" onClick={()=>window.print()}><Printer/> طباعة / حفظ PDF</button></div>
+          <div className="actions official-preview-actions"><button className="secondary" onClick={()=>setShowOfficialPreview(false)}>رجوع</button><button className="secondary" onClick={()=>navigate(`/verify/${selected.id}`)}><QrCode/> فتح صفحة التحقق</button><button className="primary" onClick={()=>window.print()}><Printer/> طباعة / حفظ PDF</button></div>
         </Modal>
       )}
       {pendingAction && (

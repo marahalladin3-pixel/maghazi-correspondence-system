@@ -138,6 +138,7 @@ function ProfileMenu() {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [side, setSide] = useState(false),
     [collapsed, setCollapsed] = useState(()=>localStorage.getItem("municipality-sidebar-collapsed")==="true"),
+    [openSections,setOpenSections]=useState<Record<string,boolean>>(()=>({"الرئيسية":true,"المراسلات":true,"مساحة العمل":true,"الأرشيف والأدوات":true,"إدارة النظام":false})),
     [notes, setNotes] = useState(false),
     [notificationFilter, setNotificationFilter] = useState<"all"|"urgent"|"unread">("all"),
     [dismissedDue, setDismissedDue] = useState<string[]>(() => JSON.parse(localStorage.getItem("municipality-dismissed-deadlines") || "[]")),
@@ -221,7 +222,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <nav aria-label="القائمة الرئيسية">
           {navSections.map(([section,paths])=>{
             const items=nav.filter(([to])=>paths.includes(to as never)&&canAccessPath(user,to));
-            return items.length?<section className="nav-section" key={section}><h3>{section}</h3>{items.map(([to,text,Icon])=><NavLink title={collapsed?text:undefined} to={to} key={to} onClick={()=>setSide(false)} className={({isActive})=>isActive?"active":""}><Icon/><span>{text}</span>{to==="/app/inbox"&&unread>0&&<b>{unread}</b>}</NavLink>)}</section>:null;
+            const active=items.some(([to])=>loc.pathname.startsWith(to));
+            const opened=openSections[section]||active;
+            return items.length?<section className={`nav-section ${opened?'open':''}`} key={section}><button className="nav-section-toggle" aria-expanded={opened} onClick={()=>setOpenSections(current=>({...current,[section]:!opened}))}><span>{section}</span><ChevronDown/></button><div className="nav-section-items">{items.map(([to,text,Icon])=><NavLink title={collapsed?text:undefined} to={to} key={to} onClick={()=>setSide(false)} className={({isActive})=>isActive?"active":""}><Icon/><span>{text}</span>{to==="/app/inbox"&&unread>0&&<b>{unread}</b>}</NavLink>)}</div></section>:null;
           })}
         </nav>
         <div className="side-foot">
@@ -325,12 +328,12 @@ export function PageHead({
     </div>
   );
 }
-export const Status = ({ children }: { children: React.ReactNode }) => (
-  <span className={`status s-${String(children).replaceAll(" ", "-")}`}>
-    {(() => {const value=String(children);if(value.includes("متأخر")||value.includes("مرفوض")||value.includes("ملغ"))return <AlertTriangle aria-hidden="true"/>;if(value.includes("تم ")||value.includes("مكتمل")||value.includes("مؤرشف")||value.includes("معتمد")||value.includes("مغلقة"))return <CheckCheck aria-hidden="true"/>;if(value.includes("انتظار")||value.includes("مسودة")||value.includes("قيد"))return <Clock3 aria-hidden="true"/>;return <RefreshCw aria-hidden="true"/>})()}
-    <span>{children}</span>
-  </span>
-);
+export const normalizeStatus=(status:string)=>{const aliases:Record<string,string>={"جديد":"مستلمة","قيد المعالجة":"قيد الإجراء","تم التحويل":"محالة","تم الإرسال":"مرسلة","تم الإنجاز":"مكتملة","مؤرشف":"مؤرشفة","معتمدة":"مكتملة","ملغي":"ملغاة","معاد للتعديل":"معادة للتعديل","بانتظار التدقيق":"بانتظار الاعتماد"};return aliases[status]||status};
+export const Status = ({ children }: { children: React.ReactNode }) => {
+  const raw=String(children),value=normalizeStatus(raw),kind=value.includes("متأخر")||value.includes("مرفوض")||value.includes("ملغ")?"danger":value.includes("مكتمل")||value.includes("مؤرشف")||value.includes("مغلق")||value.includes("مرسلة")||value.includes("مستلمة")||value.includes("تم الرد")?"success":value.includes("انتظار")||value.includes("مسودة")||value.includes("قيد")?"pending":"neutral";
+  const Icon=kind==="danger"?AlertTriangle:kind==="success"?CheckCheck:kind==="pending"?Clock3:RefreshCw;
+  return <span className={`status status-${kind} s-${value.replaceAll(" ", "-")}`} title={raw!==value?`الحالة المسجلة: ${raw}`:value}><Icon aria-hidden="true"/><span>{value}</span></span>;
+};
 export function deadlineState(date?: string, status?: string) {
   if (!date) return "none";
   if (["تم الإنجاز", "مؤرشف", "ملغي"].includes(status || "")) return "done";
