@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { useStore } from "./store";
 import { canAccessPath } from "./access";
+import { mailStatusTone, normalizeMailStatus } from "./mailStatuses";
 export const nav = [
   ["/app/dashboard", "لوحة التحكم", Home],
   ["/app/correspondence", "كل المراسلات", FolderArchive],
@@ -328,12 +329,13 @@ export function PageHead({
     </div>
   );
 }
-export const normalizeStatus=(status:string)=>{const aliases:Record<string,string>={"جديد":"مستلمة","قيد المعالجة":"قيد الإجراء","تم التحويل":"محالة","تم الإرسال":"مرسلة","تم الإنجاز":"مكتملة","مؤرشف":"مؤرشفة","معتمدة":"مكتملة","ملغي":"ملغاة","معاد للتعديل":"معادة للتعديل","بانتظار التدقيق":"بانتظار الاعتماد"};return aliases[status]||status};
-export const Status = ({ children }: { children: React.ReactNode }) => {
-  const raw=String(children),value=normalizeStatus(raw),kind=value.includes("متأخر")||value.includes("مرفوض")||value.includes("ملغ")?"danger":value.includes("مكتمل")||value.includes("مؤرشف")||value.includes("مغلق")||value.includes("مرسلة")||value.includes("مستلمة")||value.includes("تم الرد")?"success":value.includes("انتظار")||value.includes("مسودة")||value.includes("قيد")?"pending":"neutral";
+export const normalizeStatus = normalizeMailStatus;
+export const StatusBadge = ({ status }: { status: string }) => {
+  const raw=status,value=normalizeMailStatus(raw),kind=mailStatusTone(value);
   const Icon=kind==="danger"?AlertTriangle:kind==="success"?CheckCheck:kind==="pending"?Clock3:RefreshCw;
   return <span className={`status status-${kind} s-${value.replaceAll(" ", "-")}`} title={raw!==value?`الحالة المسجلة: ${raw}`:value}><Icon aria-hidden="true"/><span>{value}</span></span>;
 };
+export const Status = ({ children }: { children: React.ReactNode }) => <StatusBadge status={String(children)} />;
 export function deadlineState(date?: string, status?: string) {
   if (!date) return "none";
   if (["تم الإنجاز", "مؤرشف", "ملغي"].includes(status || "")) return "done";

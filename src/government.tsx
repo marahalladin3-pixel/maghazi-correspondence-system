@@ -6,7 +6,6 @@ import {
   ArrowLeftRight,
   BadgeCheck,
   Ban,
-  Building2,
   Camera,
   CalendarClock,
   Check,
@@ -290,7 +289,7 @@ export function GovernmentCompose() {
       requiresBrief: recipients.some((r) => r.action.includes("الإفادة")),
       urgentReply: form.priority === "عاجل جداً",
     });
-    if (status !== "مسودة") sessionStorage.setItem("municipality-compose-success", "true");
+    if (status !== "مسودة") sessionStorage.setItem("municipality-compose-success", record.number);
     navigate(`/app/mail/${record.id}`);
   };
   const reviewBeforeSend = () => {
@@ -862,7 +861,7 @@ export function GovernmentCompose() {
           </div>
         </aside>
       </div>
-      {showSendReview&&<Modal title="مراجعة قبل الإرسال" onClose={()=>setShowSendReview(false)}><div className="send-review-intro"><ShieldCheck/><div><b>راجعي البيانات قبل تثبيت المراسلة</b><p>لن يمكن تعديل الأصل بعد الإرسال إلا بإصدار نسخة مصححة موثقة.</p></div></div><dl className="send-review-grid"><div><dt>رقم المسودة</dt><dd>يُولّد تلقائيًا عند التأكيد</dd></div><div><dt>نوع المراسلة</dt><dd>{mailType==='incoming'?'كتاب وارد':mailType==='outgoing'?'كتاب صادر':'مراسلة داخلية'}</dd></div><div className="wide"><dt>الموضوع</dt><dd>{form.subject}</dd></div><div><dt>المستلمون</dt><dd>{recipients.length?recipients.map(x=>x.name).join('، '):form.from||form.to}</dd></div><div><dt>نسخة إلى</dt><dd>{copies.length?copies.join('، '):'لا يوجد'}</dd></div><div><dt>الأولوية</dt><dd>{form.priority}</dd></div><div><dt>مستوى السرية</dt><dd>{form.confidentiality}</dd></div><div><dt>يتطلب ردًا</dt><dd>{form.requiresReply?'نعم':'لا'}</dd></div><div><dt>تاريخ الاستحقاق</dt><dd>{form.dueDate||'دون موعد'}</dd></div><div><dt>المطلوب</dt><dd>{recipients.map(x=>x.action).filter(Boolean).join('، ')||'تسجيل وحفظ المراسلة'}</dd></div><div className="wide"><dt>المرفقات ({attachments.length})</dt><dd>{attachments.length?attachments.map(x=>x.name).join('، '):'لا توجد مرفقات'}</dd></div></dl><div className="actions send-review-actions"><button className="secondary" onClick={()=>setShowSendReview(false)}>رجوع للتعديل</button><button className="primary" onClick={()=>{setShowSendReview(false);save(mailType==='incoming'?'جديد':'بانتظار التدقيق')}}><Send/> تأكيد الإرسال</button></div></Modal>}
+      {showSendReview&&<Modal title="مراجعة المراسلة قبل الإرسال" onClose={()=>setShowSendReview(false)}><div className="send-review-intro"><ShieldCheck/><div><b>راجعي البيانات قبل تثبيت المراسلة</b><p>لن يمكن تعديل الأصل بعد الإرسال إلا بإصدار نسخة مصححة موثقة.</p></div></div><dl className="send-review-grid"><div><dt>نوع المراسلة</dt><dd>{mailType==='incoming'?'كتاب وارد':mailType==='outgoing'?'كتاب صادر':'مراسلة داخلية'}</dd></div><div><dt>الموضوع</dt><dd>{form.subject}</dd></div><div className="wide"><dt>الجهة / الجهات المستلمة</dt><dd>{recipients.length?recipients.map(x=>x.name).join('، '):form.from||form.to}</dd></div><div><dt>نسخة للعلم CC</dt><dd>{copies.length?copies.join('، '):'لا يوجد'}</dd></div><div><dt>الأولوية</dt><dd>{form.priority}</dd></div><div><dt>مستوى السرية</dt><dd>{form.confidentiality}</dd></div><div><dt>المطلوب</dt><dd>{recipients.map(x=>x.action).filter(Boolean).join('، ')||'تسجيل وحفظ المراسلة'}</dd></div><div><dt>هل تتطلب ردًا؟</dt><dd>{form.requiresReply?'نعم':'لا'}</dd></div><div><dt>تاريخ الاستحقاق</dt><dd>{form.dueDate||'دون موعد'}</dd></div><div><dt>التصنيف الأرشيفي</dt><dd>{form.archiveCategory||'غير محدد'}</dd></div><div className="wide"><dt>الكلمات المفتاحية</dt><dd>{form.keywords||'لا توجد'}</dd></div><div className="wide"><dt>المرفقات ({attachments.length})</dt><dd>{attachments.length?<span className="send-review-files">{attachments.map(x=><span key={x.id}><b>{x.name}</b><small>{x.mimeType||'ملف'} · {x.size}</small></span>)}</span>:'لا توجد مرفقات'}</dd></div></dl><div className="actions send-review-actions"><button className="secondary" onClick={()=>setShowSendReview(false)}>العودة للتعديل</button><button className="primary" onClick={()=>{setShowSendReview(false);save(mailType==='incoming'?'جديد':'بانتظار التدقيق')}}><Send/> تأكيد وإرسال</button></div></Modal>}
     </div>
   );
 }
@@ -881,7 +880,7 @@ export function GovernmentDetails() {
     archive = useStore((s) => s.archive),
     navigate = useNavigate();
   const [selectedId, setSelectedId] = useState(id),
-    [sentToast, setSentToast] = useState(() => sessionStorage.getItem("municipality-compose-success") === "true"),
+    [sentToast, setSentToast] = useState(() => sessionStorage.getItem("municipality-compose-success")),
     [note, setNote] = useState(""),
     [target, setTarget] = useState(""),
     [action, setAction] = useState("للمتابعة"),
@@ -921,7 +920,7 @@ export function GovernmentDetails() {
       body: "",
       reason: "",
     });
-  useEffect(()=>{if(!sentToast)return;sessionStorage.removeItem("municipality-compose-success");const timer=window.setTimeout(()=>setSentToast(false),2400);return()=>window.clearTimeout(timer)},[sentToast]);
+  useEffect(()=>{if(!sentToast)return;sessionStorage.removeItem("municipality-compose-success");const timer=window.setTimeout(()=>setSentToast(null),3200);return()=>window.clearTimeout(timer)},[sentToast]);
   const selected = all.find((x) => x.id === selectedId) || m;
   const related = useMemo(
     () => all.filter((x) => x.type === m?.type && !x.archived).slice(0, 8),
@@ -1179,16 +1178,20 @@ export function GovernmentDetails() {
   };
   return (
     <div className="compact-mail-details" data-detail-tab={detailTab}>
-      {sentToast&&<div className="toast success-toast" role="status"><Check/> تم إرسال المراسلة بنجاح</div>}
+      {sentToast&&<div className="toast success-toast" role="status"><Check/><span>تم إرسال المراسلة بنجاح<small>{sentToast}</small></span></div>}
       <PageHead
         title={`تفاصيل المراسلة ${selected.number}`}
         subtitle="عرض الكتاب وسجل التحويلات والإجراءات التشغيلية في مساحة واحدة"
       />
       <section className="panel transaction-command-center">
         <div className="command-center-head">
-          <div><small>مركز قيادة المعاملة</small><h2>{selected.subject}</h2><p>{selected.number} · {selected.from} ← {selected.to}</p></div>
+          <div><small>ملخص المراسلة</small><h2>{selected.subject}</h2><p>{selected.number} · {selected.from} ← {selected.to}</p></div>
           <div className={`command-health ${dueState}`}><CalendarClock/><span><small>حالة الموعد</small><b>{dueLabel}</b></span></div>
         </div>
+        <dl className="command-summary-grid">
+          <div><dt>رقم المراسلة</dt><dd>{selected.number}</dd></div><div><dt>الحالة الحالية</dt><dd><Status>{selected.status}</Status></dd></div><div><dt>الأولوية</dt><dd><span className={`priority p-${selected.priority.replaceAll(' ','-')}`}>{selected.priority}</span></dd></div><div><dt>مستوى السرية</dt><dd>{selected.confidentiality||'داخلي'}</dd></div>
+          <div><dt>المسؤول الحالي</dt><dd>{selected.employee||selected.department||'غير محدد'}</dd></div><div><dt>الجهة الحالية</dt><dd>{selected.department||selected.to}</dd></div><div><dt>تاريخ الاستحقاق</dt><dd>{selected.dueDate||'دون موعد'}</dd></div><div><dt>الوقت المتبقي / التأخير</dt><dd>{dueLabel}</dd></div><div className="wide"><dt>الإجراء التالي المطلوب</dt><dd>{nextAction}</dd></div>
+        </dl>
         <div className="command-stage-track" style={{"--command-progress": `${commandProgress}%`} as CSSProperties}>
           {commandStages.map((stage, index) => <div className={index < commandStage ? "done" : index === commandStage ? "current" : ""} key={stage}><i>{index < commandStage ? <Check/> : index + 1}</i><span>{stage}</span></div>)}
         </div>
@@ -1256,15 +1259,16 @@ export function GovernmentDetails() {
         <button className={detailTab==='delivery'?'active':''} onClick={()=>setDetailTab('delivery')}>الاستلام والاطلاع <b>{deliveryRecipients.length}</b></button>
         <button className={detailTab==='history'?'active':''} onClick={()=>setDetailTab('history')}>السجل والإصدارات <b>{1+(selected.versions?.length||0)}</b></button>
       </div>
-      {detailTab==='overview'&&<section className="panel detail-overview-panel"><div className="section-heading"><FileText/><div><h2>بيانات المراسلة</h2><p>البيانات الأساسية والتشغيلية في مساحة واحدة</p></div></div><dl><div><dt>المرسل</dt><dd>{selected.from}</dd></div><div><dt>المستلم</dt><dd>{selected.to}</dd></div><div><dt>النوع</dt><dd>{selected.correspondenceKind||label(selected.type)}</dd></div><div><dt>الأولوية</dt><dd>{selected.priority}</dd></div><div><dt>السرية</dt><dd>{selected.confidentiality||'داخلي'}</dd></div><div><dt>تاريخ الإنشاء</dt><dd>{selected.date}</dd></div><div><dt>تاريخ الإرسال</dt><dd>{selected.sentAt?new Date(selected.sentAt).toLocaleString('ar-PS'):'لم ترسل بعد'}</dd></div><div><dt>الاستحقاق</dt><dd>{selected.dueDate||'دون موعد'}</dd></div><div><dt>المطلوب</dt><dd>{selected.recipients?.map(x=>x.action).filter(Boolean).join('، ')||nextAction}</dd></div><div><dt>التصنيف</dt><dd>{selected.archiveCategory||selected.copyCategory||'عام'}</dd></div><div><dt>المسؤول الحالي</dt><dd>{selected.employee||selected.department||'غير محدد'}</dd></div><div><dt>SLA</dt><dd>{remainingSla<0?`متجاوز ${Math.abs(remainingSla)} يوم`:`متبقي ${remainingSla} أيام`}</dd></div></dl></section>}
+      {detailTab==='overview'&&<section className="panel detail-overview-panel"><div className="section-heading"><FileText/><div><h2>بيانات المراسلة</h2><p>البيانات الأساسية والتشغيلية في مساحة واحدة</p></div></div><dl><div><dt>المرسل</dt><dd>{selected.from}</dd></div><div><dt>المستلم</dt><dd>{selected.to}</dd></div><div><dt>النوع</dt><dd>{selected.correspondenceKind||label(selected.type)}</dd></div><div><dt>الأولوية</dt><dd>{selected.priority}</dd></div><div><dt>السرية</dt><dd>{selected.confidentiality||'داخلي'}</dd></div><div><dt>الحالة الحالية</dt><dd><Status>{selected.status}</Status></dd></div><div><dt>تاريخ الإنشاء</dt><dd>{selected.date}</dd></div><div><dt>تاريخ الإرسال</dt><dd>{selected.sentAt?new Date(selected.sentAt).toLocaleString('ar-PS'):'لم ترسل بعد'}</dd></div><div><dt>الاستحقاق</dt><dd>{selected.dueDate||'دون موعد'}</dd></div><div><dt>المطلوب</dt><dd>{selected.recipients?.map(x=>x.action).filter(Boolean).join('، ')||nextAction}</dd></div><div><dt>التصنيف</dt><dd>{selected.archiveCategory||selected.copyCategory||'عام'}</dd></div><div><dt>الكلمات المفتاحية</dt><dd>{selected.keywords||'لا توجد'}</dd></div><div><dt>المسؤول الحالي</dt><dd>{selected.employee||selected.department||'غير محدد'}</dd></div><div><dt>SLA</dt><dd>{remainingSla<0?`متجاوز ${Math.abs(remainingSla)} يوم`:`متبقي ${remainingSla} أيام`}</dd></div></dl></section>}
       {detailTab==='path'&&<section className="panel replies-thread-panel">
         <div className="panel-head"><div><h2>سلسلة الردود</h2><p>جميع الردود المرتبطة بالمراسلة الأصلية ضمن محادثة واحدة.</p></div><button className="primary" onClick={openReply}><Reply/> إضافة رد</button></div>
         <div className="replies-conversation">{selected.replies?.length?selected.replies.map((reply)=><article key={reply.id}><i>{reply.author.slice(0,1)}</i><div><header><b>{reply.author}</b><span>{new Date(reply.time).toLocaleString('ar-PS')}</span></header><p>{reply.text}</p>{reply.attachments?.length?<footer><Paperclip/>{reply.attachments.map(file=><span key={file.id}>{file.name} · {file.size}</span>)}</footer>:null}</div><Status>تم الإرسال</Status></article>):<div className="reply-empty"><Reply/><b>لا توجد ردود حتى الآن</b><span>يمكن إضافة رد رسمي أو حفظه كمسودة.</span><button onClick={openReply}>إنشاء أول رد</button></div>}</div>
       </section>}
       {detailTab==='delivery'&&<section className="panel recipients-status-panel">
         <div className="panel-head"><div><h2>حالة الإرسال والاستلام</h2><p>متابعة وصول المراسلة واطلاع الجهات المستلمة عليها.</p></div><span>{deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length} من {deliveryRecipients.length} اطلعوا</span></div>
+        <div className="delivery-summary"><span>تم الإرسال إلى <b>{deliveryRecipients.filter(r=>r.sentAt).length}</b></span><span>تم الاستلام <b>{deliveryRecipients.filter(r=>r.receivedAt).length}</b></span><span>تم الاطلاع <b>{deliveryRecipients.filter(r=>r.viewedAt).length}</b></span><span>لم يطلع <b>{deliveryRecipients.filter(r=>!r.viewedAt).length}</b></span></div>
         <div className="delivery-progress"><progress max={deliveryRecipients.length} value={deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length}/><b>{Math.round(deliveryRecipients.filter(r=>r.status==='تم الاطلاع').length/deliveryRecipients.length*100)}%</b></div>
-        <div className="recipient-status-list">{deliveryRecipients.map((recipient,index)=><article key={`${recipient.name}-${index}`}><i className={recipient.status==='تم الاطلاع'?'seen':recipient.status==='تم الاستلام'?'received':'waiting'}>{recipient.status==='تم الاطلاع'?<Eye/>:recipient.status==='تم الاستلام'?<Check/>:<Clock3/>}</i><div><b>{recipient.name}</b><span>{recipient.status}</span></div><time>{recipient.time}</time></article>)}</div>
+        <div className="recipient-status-list">{deliveryRecipients.map((recipient,index)=><article key={`${recipient.name}-${index}`}><i className={recipient.status==='تم الاطلاع'?'seen':recipient.status==='تم الاستلام'?'received':'waiting'}>{recipient.status==='تم الاطلاع'?<Eye/>:recipient.status==='تم الاستلام'?<Check/>:<Clock3/>}</i><div><b>{recipient.name}</b><span>{recipient.status}{recipient.receivedAt&&!recipient.viewedAt?' — لم يتم الاطلاع':''}</span><small>الإرسال: {recipient.sentAt?new Date(recipient.sentAt).toLocaleString('ar-PS'):'—'} · الاستلام: {recipient.receivedAt?new Date(recipient.receivedAt).toLocaleString('ar-PS'):'—'} · الاطلاع: {recipient.viewedAt?new Date(recipient.viewedAt).toLocaleString('ar-PS'):'لم يتم'}</small></div><time>{recipient.time}</time></article>)}</div>
       </section>}
       {detailTab==='history'&&<section className="panel detail-history-panel"><div className="panel-head"><div><h2>سجل التغييرات والإصدارات</h2><p>الأصل وجميع النسخ المصححة وأسباب إصدارها</p></div><FileClock/></div><div className="version-ledger"><article><i>1</i><div><b>الإصدار الأصلي</b><span>{selected.originalSnapshot?.sealedAt?new Date(selected.originalSnapshot.sealedAt).toLocaleString('ar-PS'):selected.date}</span><p>إنشاء الأصل الإلكتروني وحفظه في السجل.</p></div></article>{(selected.versions||[]).map(version=><article key={version.id}><i>{version.version}</i><div><b>{version.subject}</b><span>{new Date(version.time).toLocaleString('ar-PS')} · {version.author}</span><p>{version.reason}</p></div></article>)}</div>{!(selected.versions||[]).length&&<p className="history-clean"><ShieldCheck/> لا توجد تعديلات على النسخة الأصلية.</p>}</section>}
       <details className="panel correspondence-thread" open>
@@ -1599,14 +1603,14 @@ export function GovernmentDetails() {
       {showOfficialPreview && (
         <Modal title="معاينة النسخة الرسمية" onClose={()=>setShowOfficialPreview(false)}>
           <article className="official-document-preview" dir="rtl">
-            <header><div className="official-logo"><Building2 aria-hidden="true"/></div><div><b>دولة فلسطين</b><strong>بلدية المغازي</strong><span>نظام المراسلات والأرشيف الإلكتروني</span></div><aside><small>رقم الكتاب</small><strong>{selected.number}</strong><small>التاريخ: {selected.date}</small></aside></header>
-            <div className="official-parties"><p>إلى: <b>{selected.to}</b></p><p>من: <b>{selected.from}</b></p><p>الموضوع: <b>{selected.subject}</b></p></div>
+            <header><div className="official-logo" role="img" aria-label="مكان شعار بلدية المغازي"><span>شعار بلدية<br/>المغازي</span></div><div><b>دولة فلسطين</b><strong>بلدية المغازي</strong><span>نظام المراسلات الإلكتروني</span></div><aside><small>رقم الكتاب: <b>{selected.number}</b></small><small>التاريخ: <b>{selected.date}</b></small><small>المرفقات: <b>{selected.attachments.length||'لا يوجد'}</b></small><small>المرجع: <b>{selected.linkedMailIds?.length?selected.linkedMailIds.join('، '):'—'}</b></small></aside></header>
+            <div className="official-parties"><p>إلى: <b>{selected.to}</b></p><p>من: <b>{selected.from}</b></p><p className="official-subject">الموضوع: <b>{selected.subject}</b></p></div>
             <div className="official-letter-body">{selected.body||"لا يوجد نص تفصيلي مسجل لهذه المراسلة."}</div>
-            <footer><div className="official-approval"><b>الاعتماد الإلكتروني</b><span>{selected.employee||user.name}</span><small>الصفة: {selected.jobTitle||"المسؤول عن المراسلة"}</small><div className="stamp-space">مساحة الختم والتوقيع</div><small>نسخة إلكترونية موثقة — الإصدار {1+(selected.versions?.length||0)}</small></div><div className="verification-code"><div className="fake-qr" aria-label="رمز تحقق إلكتروني"><QrCode/></div><span>رمز التحقق</span><b>{`MUN-${selected.id}-${selected.date.replaceAll('-','')}`}</b></div></footer>
-            <div className="official-page-footer"><span>بلدية المغازي — المحافظة الوسطى، فلسطين</span><span>صفحة 1 من 1</span></div>
+            <footer><div className="official-approval"><b>الاسم: {selected.employee||user.name}</b><span>المسمى الوظيفي: {selected.jobTitle||"المسؤول عن المراسلة"}</span><div className="signature-lines"><span>التوقيع: ....................</span><span>الختم: ....................</span></div><small>نسخة إلكترونية موثقة — الإصدار {1+(selected.versions?.length||0)}</small></div><div className="verification-code"><div className="fake-qr" aria-label="رمز تحقق إلكتروني"><QrCode/></div><span>للتحقق من صحة الوثيقة</span><b>{selected.number}</b></div></footer>
+            <div className="official-page-footer"><span>بلدية المغازي – نظام المراسلات الإلكتروني</span><span>رقم الصفحة: 1 / 1</span></div>
           </article>
           <p className="verification-note"><ShieldCheck/> يمكن مطابقة رقم الكتاب ورمز التحقق مع سجل المراسلة الإلكتروني. الربط العام للرمز يُفعّل عند توصيل الخادم.</p>
-          <div className="actions official-preview-actions"><button className="secondary" onClick={()=>setShowOfficialPreview(false)}>رجوع</button><button className="secondary" onClick={()=>navigate(`/verify/${selected.id}`)}><QrCode/> فتح صفحة التحقق</button><button className="primary" onClick={()=>window.print()}><Printer/> طباعة / حفظ PDF</button></div>
+          <div className="actions official-preview-actions"><button className="secondary" onClick={()=>setShowOfficialPreview(false)}>إغلاق المعاينة</button><button className="secondary" onClick={()=>navigate(`/verify/${selected.id}`)}><QrCode/> فتح صفحة التحقق</button><button className="primary" onClick={()=>window.print()}><Printer/> طباعة / حفظ PDF</button></div>
         </Modal>
       )}
       {pendingAction && (
